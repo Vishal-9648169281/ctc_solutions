@@ -14,13 +14,14 @@
     </div>
     <div class="ctc-card-body p-0">
         <table class="table table-hover mb-0 ctc-datatable">
-            <thead><tr><th>#</th><th>Name</th><th>Phone</th><th>City</th><th>GSTIN</th><th>Balance</th><th>Actions</th></tr></thead>
+            <thead><tr><th>#</th><th>Name</th><th>Phone</th><th>Mobile</th><th>City</th><th>GSTIN</th><th>Balance</th><th>Actions</th></tr></thead>
             <tbody>
             {% for c in customers %}
             <tr>
                 <td>{{ forloop.counter }}</td>
                 <td><strong>{{ c.name }}</strong></td>
                 <td>{{ c.phone }}</td>
+                <td>{{ c.mobile|default:"-" }}</td>
                 <td>{{ c.city }}</td>
                 <td>{{ c.gstin|default:"-" }}</td>
                 <td>Rs.{{ c.opening_balance }}</td>
@@ -30,7 +31,7 @@
                 </td>
             </tr>
             {% empty %}
-            <tr><td colspan="7" class="text-center text-muted py-4"><i class="fa fa-inbox fa-2x d-block mb-2"></i>No customers found</td></tr>
+            <tr><td colspan="8" class="text-center text-muted py-4"><i class="fa fa-inbox fa-2x d-block mb-2"></i>No customers found</td></tr>
             {% endfor %}
             </tbody>
         </table>

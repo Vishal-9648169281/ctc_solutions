@@ -25,11 +25,27 @@ def generate_invoice_number(invoice_type):
 @login_required
 def invoice_list(request):
     invoice_type = request.GET.get("type", "all")
+    from_date = request.GET.get('from_date', '')
+    to_date = request.GET.get('to_date', '')
+    query = request.GET.get('q', '')
     if invoice_type == "all":
         invoices = SalesInvoice.objects.all().select_related("customer").order_by("-invoice_date")
     else:
         invoices = SalesInvoice.objects.filter(invoice_type=invoice_type).select_related("customer").order_by("-invoice_date")
-    return render(request, "sales/invoice_list.html", {"invoices": invoices, "invoice_type": invoice_type})
+    if from_date:
+        invoices = invoices.filter(invoice_date__gte=from_date)
+    if to_date:
+        invoices = invoices.filter(invoice_date__lte=to_date)
+    if query:
+        invoices = invoices.filter(customer__name__icontains=query)
+    return render(request, "sales/invoice_list.html", {
+        "invoices": invoices,
+        "invoice_type": invoice_type,
+        "current_type": invoice_type,
+        "from_date": from_date,
+        "to_date": to_date,
+        "query": query,
+    })
 
 @login_required
 def invoice_add(request):
@@ -55,6 +71,7 @@ def invoice_add(request):
                     due_date=_date("due_date"),
                     notes=request.POST.get("notes", ""),
                     reverse_charge=request.POST.get("reverse_charge", "N"),
+                    gst_type=request.POST.get("gst_type", "W"),
                     gr_number=request.POST.get("gr_number", ""),
                     gr_date=_date("gr_date"),
                     date_of_supply=_date("date_of_supply"),
@@ -69,6 +86,7 @@ def invoice_add(request):
                     add_less1=Decimal(str(request.POST.get("add_less1", 0) or 0)),
                     add_less2_label=request.POST.get("add_less2_label", ""),
                     add_less2=Decimal(str(request.POST.get("add_less2", 0) or 0)),
+                    bill_discount_pct=Decimal(str(request.POST.get("bill_discount_pct", 0) or 0)),
                     subtotal=0, tax_amount=0, total_amount=0
                 )
                 product_ids = request.POST.getlist("product[]")
@@ -78,6 +96,7 @@ def invoice_add(request):
                 tax_rates = request.POST.getlist("tax_rate[]")
                 hsn_nos = request.POST.getlist("hsn_no[]")
                 units = request.POST.getlist("unit[]")
+                discount_pcts = request.POST.getlist("discount_pct[]")
                 subtotal = 0
                 tax_total = 0
                 for i in range(len(quantities)):
@@ -88,7 +107,9 @@ def invoice_add(request):
                     qty = float(quantities[i] or 0)
                     rate = float(rates[i] or 0)
                     tax = float(tax_rates[i] or 0)
-                    amount = qty * rate
+                    dis_pct = float(discount_pcts[i] if i < len(discount_pcts) else 0 or 0)
+                    dis_amt = rate * qty * dis_pct / 100
+                    amount = qty * rate - dis_amt
                     tax_amt = amount * tax / 100
                     SalesInvoiceItem.objects.create(
                         invoice=invoice,
@@ -98,6 +119,8 @@ def invoice_add(request):
                         unit=units[i] if i < len(units) else '',
                         quantity=qty,
                         rate=rate,
+                        discount_pct=Decimal(str(dis_pct)),
+                        discount_amt=Decimal(str(round(dis_amt, 2))),
                         tax_rate=tax,
                         tax_amount=tax_amt,
                         amount=amount
@@ -109,6 +132,8 @@ def invoice_add(request):
                     subtotal += amount
                     tax_total += tax_amt
                 discount = float(request.POST.get("discount", 0) or 0)
+                bill_discount_pct = float(request.POST.get("bill_discount_pct", 0) or 0)
+                bill_discount_amt = (subtotal + tax_total) * bill_discount_pct / 100
                 al1_label = request.POST.get("add_less1_label", "")
                 al2_label = request.POST.get("add_less2_label", "")
                 add_less1 = float(request.POST.get("add_less1", 0) or 0)
@@ -118,10 +143,11 @@ def invoice_add(request):
                     add_less1 = -abs(add_less1)
                 if al2_label and al2_label.strip().upper().startswith('L'):
                     add_less2 = -abs(add_less2)
-                net = subtotal + tax_total + add_less1 + add_less2 - discount
+                net = subtotal + tax_total + add_less1 + add_less2 - discount - bill_discount_amt
                 invoice.subtotal = subtotal
                 invoice.tax_amount = tax_total
                 invoice.discount = discount
+                invoice.bill_discount_pct = Decimal(str(bill_discount_pct))
                 invoice.total_amount = net
                 invoice.net_rounded = round(net)
                 invoice.save()

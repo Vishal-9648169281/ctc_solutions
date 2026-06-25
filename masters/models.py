@@ -24,6 +24,7 @@ class Unit(models.Model):
 class Customer(models.Model):
     name = models.CharField(max_length=200)
     phone = models.CharField(max_length=15)
+    mobile = models.CharField(max_length=15, blank=True, default='')
     email = models.EmailField(blank=True)
     address = models.TextField(blank=True)
     city = models.CharField(max_length=100, blank=True)
@@ -41,6 +42,7 @@ class Customer(models.Model):
 class Vendor(models.Model):
     name = models.CharField(max_length=200)
     phone = models.CharField(max_length=15)
+    mobile = models.CharField(max_length=15, blank=True, default='')
     email = models.EmailField(blank=True)
     address = models.TextField(blank=True)
     city = models.CharField(max_length=100, blank=True)

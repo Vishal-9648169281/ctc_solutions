@@ -280,6 +280,7 @@ def customer_add(request):
         Customer.objects.create(
             name=request.POST['name'],
             phone=request.POST['phone'],
+            mobile=request.POST.get('mobile', ''),
             email=request.POST.get('email', ''),
             address=request.POST.get('address', ''),
             city=request.POST.get('city', ''),
@@ -298,6 +299,7 @@ def customer_edit(request, pk):
     if request.method == 'POST':
         customer.name = request.POST['name']
         customer.phone = request.POST['phone']
+        customer.mobile = request.POST.get('mobile', '')
         customer.email = request.POST.get('email', '')
         customer.address = request.POST.get('address', '')
         customer.city = request.POST.get('city', '')
@@ -333,6 +335,7 @@ def vendor_add(request):
         Vendor.objects.create(
             name=request.POST['name'],
             phone=request.POST['phone'],
+            mobile=request.POST.get('mobile', ''),
             email=request.POST.get('email', ''),
             address=request.POST.get('address', ''),
             city=request.POST.get('city', ''),
@@ -351,6 +354,7 @@ def vendor_edit(request, pk):
     if request.method == 'POST':
         vendor.name = request.POST['name']
         vendor.phone = request.POST['phone']
+        vendor.mobile = request.POST.get('mobile', '')
         vendor.email = request.POST.get('email', '')
         vendor.address = request.POST.get('address', '')
         vendor.city = request.POST.get('city', '')

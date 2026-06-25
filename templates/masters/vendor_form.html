@@ -25,6 +25,10 @@
                     <input type="text" name="phone" value="{{ obj.phone|default:'' }}" class="form-control form-control-sm" required>
                 </div>
                 <div class="col-md-6">
+                    <label class="form-label-sm">Mobile</label>
+                    <input type="text" name="mobile" value="{{ obj.mobile|default:'' }}" class="form-control form-control-sm" maxlength="15">
+                </div>
+                <div class="col-md-6">
                     <label class="form-label-sm">Email</label>
                     <input type="email" name="email" value="{{ obj.email|default:'' }}" class="form-control form-control-sm">
                 </div>

@@ -50,12 +50,29 @@
           <label class="form-label-sm">Party (Customer) <span class="text-danger">*</span>
             <button type="button" class="quick-add-btn ms-1" onclick="openQuickCustomer()"><i class="fa fa-plus"></i> New</button>
           </label>
-          <select name="customer" id="customerSelect" class="form-select form-select-sm" required>
+          <select name="customer" id="customerSelect" class="form-select form-select-sm" required onchange="onCustomerChange(this)">
             <option value="">-- Select Customer --</option>
             {% for c in customers %}
-            <option value="{{ c.pk }}">{{ c.name }}</option>
+            <option value="{{ c.pk }}" data-mobile="{{ c.mobile|default:'' }}" data-gst-type="{{ c.gst_type|default:'W' }}">{{ c.name }}</option>
             {% endfor %}
           </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label-sm">Mobile</label>
+          <input type="text" id="inv_mobile" class="form-control form-control-sm" readonly placeholder="Auto-filled">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label-sm">GST Type</label>
+          <div class="d-flex gap-3 pt-1">
+            <div class="form-check form-check-inline mb-0">
+              <input class="form-check-input" type="radio" name="gst_type" id="gst_within" value="W" checked onchange="onGstTypeChange()">
+              <label class="form-check-label small" for="gst_within">Within</label>
+            </div>
+            <div class="form-check form-check-inline mb-0">
+              <input class="form-check-input" type="radio" name="gst_type" id="gst_inter" value="I" onchange="onGstTypeChange()">
+              <label class="form-check-label small" for="gst_inter">Inter</label>
+            </div>
+          </div>
         </div>
         <div class="col-md-2">
           <label class="form-label-sm">Due Date</label>
@@ -137,13 +154,14 @@
       <table class="table items-table mb-0">
         <thead>
           <tr>
-            <th style="width:32%">Particulars <small style="font-weight:400;opacity:.8">(master or manual)</small></th>
-            <th style="width:9%">HSN No.</th>
-            <th style="width:6%">GST%</th>
-            <th style="width:6%">Qty</th>
-            <th style="width:6%">Unit</th>
-            <th style="width:10%">Rate</th>
-            <th style="width:10%">Amount</th>
+            <th style="width:28%">Particulars <small style="font-weight:400;opacity:.8">(master or manual)</small></th>
+            <th style="width:8%">HSN No.</th>
+            <th style="width:5%">GST%</th>
+            <th style="width:5%">Qty</th>
+            <th style="width:5%">Unit</th>
+            <th style="width:9%">Rate</th>
+            <th style="width:6%">Dis%</th>
+            <th style="width:9%">Amount</th>
             <th style="width:5%"></th>
           </tr>
         </thead>
@@ -164,8 +182,9 @@
             <td><input type="number" name="tax_rate[]" class="form-control form-control-sm tax" value="18" onchange="calcRow(this)" style="width:55px"></td>
             <td><input type="number" name="quantity[]" class="form-control form-control-sm qty" value="1" min="0.01" step="0.01" onchange="calcRow(this)" required style="width:58px"></td>
             <td><input type="text" name="unit[]" class="form-control form-control-sm unit-fld" style="width:52px" placeholder="Pcs"></td>
-            <td><input type="number" name="rate[]" class="form-control form-control-sm rate" value="0" step="0.01" onchange="calcRow(this)" required style="width:82px"></td>
-            <td><input type="number" name="amount[]" class="form-control form-control-sm amount" value="0" readonly style="width:82px;background:#f8fafc;font-weight:600"></td>
+            <td><input type="number" name="rate[]" class="form-control form-control-sm rate" value="0" step="0.01" onchange="calcRow(this)" required style="width:78px"></td>
+            <td><input type="number" name="discount_pct[]" class="form-control form-control-sm dis-pct" value="0" step="0.01" min="0" max="100" onchange="calcRow(this)" style="width:55px"></td>
+            <td><input type="number" name="amount[]" class="form-control form-control-sm amount" value="0" readonly style="width:78px;background:#f8fafc;font-weight:600"></td>
             <td><button type="button" class="btn-sm-icon btn-delete" onclick="removeRow(this)"><i class="fa fa-trash"></i></button></td>
           </tr>
         </tbody>
@@ -196,6 +215,10 @@
             <tr style="background:#f8fafc">
               <td>Discount</td>
               <td class="text-end"><input type="number" name="discount" id="discount" class="form-control form-control-sm d-inline" value="0" style="width:110px" onchange="calcTotal()"></td>
+            </tr>
+            <tr style="background:#f8fafc">
+              <td>Bill Discount % &nbsp;<span class="text-muted small" id="billDiscAmtDisplay"></span></td>
+              <td class="text-end"><input type="number" name="bill_discount_pct" id="bill_discount_pct" class="form-control form-control-sm d-inline" value="0" step="0.01" min="0" max="100" style="width:110px" onchange="calcTotal()"></td>
             </tr>
             <tr class="grand"><td><strong>NET AMOUNT</strong></td><td class="text-end fs-5"><strong id="grandTotal">0.00</strong></td></tr>
             <tr style="background:#eff6ff"><td style="color:#1e40af">Net Rounded</td><td class="text-end fw-700" style="color:#1e40af" id="netRounded">0</td></tr>
@@ -269,8 +292,9 @@ function addRow() {
         <td><input type="number" name="tax_rate[]" class="form-control form-control-sm tax" value="18" onchange="calcRow(this)" style="width:55px"></td>
         <td><input type="number" name="quantity[]" class="form-control form-control-sm qty" value="1" min="0.01" step="0.01" onchange="calcRow(this)" required style="width:58px"></td>
         <td><input type="text" name="unit[]" class="form-control form-control-sm unit-fld" style="width:52px" placeholder="Pcs"></td>
-        <td><input type="number" name="rate[]" class="form-control form-control-sm rate" value="0" step="0.01" onchange="calcRow(this)" required style="width:82px"></td>
-        <td><input type="number" name="amount[]" class="form-control form-control-sm amount" value="0" readonly style="width:82px;background:#f8fafc;font-weight:600"></td>
+        <td><input type="number" name="rate[]" class="form-control form-control-sm rate" value="0" step="0.01" onchange="calcRow(this)" required style="width:78px"></td>
+        <td><input type="number" name="discount_pct[]" class="form-control form-control-sm dis-pct" value="0" step="0.01" min="0" max="100" onchange="calcRow(this)" style="width:55px"></td>
+        <td><input type="number" name="amount[]" class="form-control form-control-sm amount" value="0" readonly style="width:78px;background:#f8fafc;font-weight:600"></td>
         <td><button type="button" class="btn-sm-icon btn-delete" onclick="removeRow(this)"><i class="fa fa-trash"></i></button></td>
     </tr>`);
 }
@@ -285,7 +309,6 @@ function fillRate(sel) {
     row.querySelector('.tax').value  = opt.dataset.tax  || 18;
     row.querySelector('.hsn').value  = opt.dataset.hsn  || '';
     row.querySelector('.unit-fld').value = opt.dataset.unit || '';
-    // Clear manual desc when master selected
     const manualEl = row.querySelector('.manual-desc');
     if (manualEl) manualEl.value = '';
     calcRow(sel);
@@ -293,9 +316,12 @@ function fillRate(sel) {
 
 function calcRow(el) {
     const row = el.closest('tr');
-    const qty  = parseFloat(row.querySelector('.qty').value)  || 0;
-    const rate = parseFloat(row.querySelector('.rate').value) || 0;
-    row.querySelector('.amount').value = (qty * rate).toFixed(2);
+    const qty    = parseFloat(row.querySelector('.qty').value)     || 0;
+    const rate   = parseFloat(row.querySelector('.rate').value)    || 0;
+    const disPct = parseFloat(row.querySelector('.dis-pct').value) || 0;
+    const baseAmt = qty * rate;
+    const disAmt  = baseAmt * disPct / 100;
+    row.querySelector('.amount').value = (baseAmt - disAmt).toFixed(2);
     calcTotal();
 }
 
@@ -316,21 +342,42 @@ function applyAddLessSign(n) {
 function calcTotal() {
     let subtotal = 0, tax = 0;
     document.querySelectorAll('#itemsBody tr').forEach(row => {
-        const qty     = parseFloat(row.querySelector('.qty').value)  || 0;
-        const rate    = parseFloat(row.querySelector('.rate').value) || 0;
-        const taxRate = parseFloat(row.querySelector('.tax').value)  || 0;
-        const amt = qty * rate;
-        subtotal += amt;
-        tax += amt * taxRate / 100;
+        const qty     = parseFloat(row.querySelector('.qty').value)     || 0;
+        const rate    = parseFloat(row.querySelector('.rate').value)    || 0;
+        const disPct  = parseFloat(row.querySelector('.dis-pct').value) || 0;
+        const taxRate = parseFloat(row.querySelector('.tax').value)     || 0;
+        const baseAmt = qty * rate;
+        const lineAmt = baseAmt - (baseAmt * disPct / 100);
+        subtotal += lineAmt;
+        tax += lineAmt * taxRate / 100;
     });
-    const discount  = parseFloat(document.getElementById('discount').value)  || 0;
-    const addLess1  = parseFloat(document.getElementById('add_less1').value) || 0;
-    const addLess2  = parseFloat(document.getElementById('add_less2').value) || 0;
-    const net = subtotal + tax + addLess1 + addLess2 - discount;
+    const discount       = parseFloat(document.getElementById('discount').value)          || 0;
+    const billDiscPct    = parseFloat(document.getElementById('bill_discount_pct').value) || 0;
+    const billDiscAmt    = (subtotal + tax) * billDiscPct / 100;
+    const addLess1       = parseFloat(document.getElementById('add_less1').value) || 0;
+    const addLess2       = parseFloat(document.getElementById('add_less2').value) || 0;
+    const net = subtotal + tax + addLess1 + addLess2 - discount - billDiscAmt;
     document.getElementById('subtotal').textContent  = subtotal.toFixed(2);
     document.getElementById('taxTotal').textContent  = tax.toFixed(2);
     document.getElementById('grandTotal').textContent = net.toFixed(2);
     document.getElementById('netRounded').textContent = Math.round(net);
+    const disp = document.getElementById('billDiscAmtDisplay');
+    if (disp) disp.textContent = billDiscPct > 0 ? `(- ${billDiscAmt.toFixed(2)})` : '';
+}
+
+// ── Customer change: auto-fill mobile + GST type ─────────────
+function onCustomerChange(sel) {
+    const opt = sel.options[sel.selectedIndex];
+    document.getElementById('inv_mobile').value = opt.dataset.mobile || '';
+    const gstType = opt.dataset.gstType || 'W';
+    document.getElementById(gstType === 'I' ? 'gst_inter' : 'gst_within').checked = true;
+    onGstTypeChange();
+}
+
+// ── GST type toggle: show label in tax header (visual only) ──
+function onGstTypeChange() {
+    const isInter = document.getElementById('gst_inter').checked;
+    // Could update a header label — kept minimal for now
 }
 
 // ── Quick Add Customer ───────────────────────────────────────
@@ -360,8 +407,11 @@ function saveQuickCustomer() {
         if (!data.ok) { document.getElementById('qc_error').textContent=data.error; document.getElementById('qc_error').classList.remove('d-none'); return; }
         const sel = document.getElementById('customerSelect');
         const opt = new Option(data.name, data.pk, true, true);
+        opt.dataset.mobile = '';
+        opt.dataset.gstType = 'W';
         sel.add(opt);
         sel.value = data.pk;
+        onCustomerChange(sel);
         _qcModal.hide();
     }).catch(()=>{ document.getElementById('qc_error').textContent='Server error'; document.getElementById('qc_error').classList.remove('d-none'); });
 }
