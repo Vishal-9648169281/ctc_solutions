@@ -318,21 +318,19 @@ def invoice_pdf(request, pk):
     elements.append(Spacer(1, 2*mm))
 
     # ── ITEMS TABLE ──────────────────────────────────────
-    # 15 cols: S.NO | Desc | HSN | Qty | UOM | Rate | DIS | Taxable | CgstR | CgstA | UtgstR | UtgstA | IgstR | IgstA | Amount
-    col_w = [6*mm, 30*mm, 13*mm, 7*mm, 8*mm, 13*mm, 7*mm, 14*mm,
-             8*mm, 12*mm, 8*mm, 12*mm, 8*mm, 12*mm, 16*mm]
+    # 14 cols: S.NO | Desc | HSN | Qty | UOM | Rate | Taxable | CgstR | CgstA | UtgstR | UtgstA | IgstR | IgstA | Amount
+    col_w = [6*mm, 32*mm, 14*mm, 8*mm, 8*mm, 14*mm, 16*mm,
+             8*mm, 13*mm, 8*mm, 13*mm, 8*mm, 13*mm, 17*mm]
 
     def _h(t, n): return Paragraph(f"<b>{t}</b>", ps(n, 6, bold=True, align=TA_CENTER))
-    # Two-row header: row 0 = group labels (CGST/UTGST/IGST span 2 cols each),
-    #                 row 1 = sub-labels (Rate / Amount / Rate / Amount / Rate / Amount)
     hdr0 = [_h("S.\nNO","h0"), _h("Description\nof Goods","h1"), _h("HSN\nCode","h2"),
-            _h("Qty","h3"), _h("UOM","h4"), _h("Rate","h5"), _h("DIS","h6"),
+            _h("Qty","h3"), _h("UOM","h4"), _h("Rate","h5"),
             _h("Taxable\nValue ₹","h7"),
             _h("CGST","hcg"), Paragraph("", ps("hcg2",6)),
             _h("UTGST","hug"), Paragraph("", ps("hug2",6)),
             _h("IGST","hig"), Paragraph("", ps("hig2",6)),
             _h("Amount\n₹","ha")]
-    hdr1 = [Paragraph("",ps("x",6))]*8 + [
+    hdr1 = [Paragraph("",ps("x",6))]*7 + [
             _h("Rate","hcgr"), _h("Amount\n₹","hcga"),
             _h("Rate","hugr"), _h("Amount\n₹","huga"),
             _h("Rate","higr"), _h("Amount\n₹","higa"),
@@ -374,7 +372,6 @@ def invoice_pdf(request, pk):
             _cc(str(item.quantity), f"rq{idx}"),
             _cc(unit_name, f"ru{idx}"),
             _c(f"{float(item.rate):.2f}", f"rr{idx}"),
-            _c(f"{dis_pct:.0f}%" if dis_pct else "0", f"rdis{idx}"),
             _c(f"{taxable:.2f}", f"rt{idx}"),
             # CGST
             _cc(f"{half_rate:.0f}%" if not is_inter else "0", f"rcgr{idx}"),
@@ -390,7 +387,7 @@ def invoice_pdf(request, pk):
 
     # Empty filler rows
     for i in range(max(0, 5 - len(items))):
-        rows.append([Paragraph("", ps(f"e{i}", 6))] * 15)
+        rows.append([Paragraph("", ps(f"e{i}", 6))] * 14)
 
     item_t = Table(rows, colWidths=col_w)
     item_t.setStyle(TableStyle([
@@ -402,24 +399,23 @@ def invoice_pdf(request, pk):
         ("VALIGN",    (0,0), (-1,-1), "MIDDLE"),
         ("PADDING",   (0,0), (-1,-1), 2),
         # Span single-column headers across both header rows
-        ("SPAN", (0,0), (0,1)),   # S.NO
-        ("SPAN", (1,0), (1,1)),   # Description
-        ("SPAN", (2,0), (2,1)),   # HSN
-        ("SPAN", (3,0), (3,1)),   # Qty
-        ("SPAN", (4,0), (4,1)),   # UOM
-        ("SPAN", (5,0), (5,1)),   # Rate
-        ("SPAN", (6,0), (6,1)),   # DIS
-        ("SPAN", (7,0), (7,1)),   # Taxable Value
-        ("SPAN", (14,0),(14,1)),  # Amount
+        ("SPAN", (0,0),  (0,1)),  # S.NO
+        ("SPAN", (1,0),  (1,1)),  # Description
+        ("SPAN", (2,0),  (2,1)),  # HSN
+        ("SPAN", (3,0),  (3,1)),  # Qty
+        ("SPAN", (4,0),  (4,1)),  # UOM
+        ("SPAN", (5,0),  (5,1)),  # Rate
+        ("SPAN", (6,0),  (6,1)),  # Taxable Value
+        ("SPAN", (13,0), (13,1)), # Amount
         # Span CGST / UTGST / IGST group headers across 2 cols in row 0
-        ("SPAN", (8,0),  (9,0)),  # CGST
-        ("SPAN", (10,0), (11,0)), # UTGST
-        ("SPAN", (12,0), (13,0)), # IGST
-        # Heavier border between tax groups
-        ("LINEBEFORE", (8,0),  (-1,-1), 0.5, colors.black),
-        ("LINEBEFORE", (10,0), (-1,-1), 0.5, colors.black),
-        ("LINEBEFORE", (12,0), (-1,-1), 0.5, colors.black),
-        ("LINEBEFORE", (14,0), (-1,-1), 0.5, colors.black),
+        ("SPAN", (7,0),  (8,0)),  # CGST
+        ("SPAN", (9,0),  (10,0)), # UTGST
+        ("SPAN", (11,0), (12,0)), # IGST
+        # Border between tax groups
+        ("LINEBEFORE", (7,0),  (-1,-1), 0.5, colors.black),
+        ("LINEBEFORE", (9,0),  (-1,-1), 0.5, colors.black),
+        ("LINEBEFORE", (11,0), (-1,-1), 0.5, colors.black),
+        ("LINEBEFORE", (13,0), (-1,-1), 0.5, colors.black),
     ]))
     elements.append(item_t)
     elements.append(Spacer(1, 2*mm))
