@@ -318,20 +318,26 @@ def invoice_pdf(request, pk):
     elements.append(Spacer(1, 2*mm))
 
     # ── ITEMS TABLE ──────────────────────────────────────
-    col_w = [8*mm, 38*mm, 15*mm, 10*mm, 10*mm, 16*mm, 18*mm, 24*mm, 18*mm, 18*mm, 19*mm]
-    rows = [[
-        Paragraph("<b>S.\nNO</b>", ps("h0", 7, bold=True, align=TA_CENTER)),
-        Paragraph("<b>Description of Goods</b>", ps("h1", 7, bold=True, align=TA_CENTER)),
-        Paragraph("<b>HSN Code\n/ SAC</b>", ps("h2", 7, bold=True, align=TA_CENTER)),
-        Paragraph("<b>Qty</b>", ps("h3", 7, bold=True, align=TA_CENTER)),
-        Paragraph("<b>UOM</b>", ps("h4", 7, bold=True, align=TA_CENTER)),
-        Paragraph("<b>Rate</b>", ps("h5", 7, bold=True, align=TA_CENTER)),
-        Paragraph("<b>Taxable\nValue</b>", ps("h6", 7, bold=True, align=TA_CENTER)),
-        Paragraph("<b>CGST\nRate   Amount</b>", ps("h7", 7, bold=True, align=TA_CENTER)),
-        Paragraph("<b>UTGST\nRate   Amount</b>", ps("h8", 7, bold=True, align=TA_CENTER)),
-        Paragraph("<b>IGST\nRate   Amount</b>", ps("h9", 7, bold=True, align=TA_CENTER)),
-        Paragraph("<b>Amount</b>", ps("h10", 7, bold=True, align=TA_CENTER)),
-    ]]
+    # 15 cols: S.NO | Desc | HSN | Qty | UOM | Rate | DIS | Taxable | CgstR | CgstA | UtgstR | UtgstA | IgstR | IgstA | Amount
+    col_w = [6*mm, 30*mm, 13*mm, 7*mm, 8*mm, 13*mm, 7*mm, 14*mm,
+             8*mm, 12*mm, 8*mm, 12*mm, 8*mm, 12*mm, 16*mm]
+
+    def _h(t, n): return Paragraph(f"<b>{t}</b>", ps(n, 6, bold=True, align=TA_CENTER))
+    # Two-row header: row 0 = group labels (CGST/UTGST/IGST span 2 cols each),
+    #                 row 1 = sub-labels (Rate / Amount / Rate / Amount / Rate / Amount)
+    hdr0 = [_h("S.\nNO","h0"), _h("Description\nof Goods","h1"), _h("HSN\nCode","h2"),
+            _h("Qty","h3"), _h("UOM","h4"), _h("Rate","h5"), _h("DIS","h6"),
+            _h("Taxable\nValue ₹","h7"),
+            _h("CGST","hcg"), Paragraph("", ps("hcg2",6)),
+            _h("UTGST","hug"), Paragraph("", ps("hug2",6)),
+            _h("IGST","hig"), Paragraph("", ps("hig2",6)),
+            _h("Amount\n₹","ha")]
+    hdr1 = [Paragraph("",ps("x",6))]*8 + [
+            _h("Rate","hcgr"), _h("Amount\n₹","hcga"),
+            _h("Rate","hugr"), _h("Amount\n₹","huga"),
+            _h("Rate","higr"), _h("Amount\n₹","higa"),
+            Paragraph("",ps("xa",6))]
+    rows = [hdr0, hdr1]
 
     is_inter = (invoice.gst_type == 'I')
     total_taxable = 0
@@ -359,40 +365,61 @@ def invoice_pdf(request, pk):
         unit_name = item.unit or (str(item.product.unit) if item.product and item.product.unit else "NOS")
         hsn_display = item.hsn_no or (item.product.hsn_code if item.product else "") or ""
         item_name = item.description or (item.product.name if item.product else "")
-        if is_inter:
-            cgst_cell = Paragraph("0.00   0.00", ps(f"r7{idx}", 7, align=TA_RIGHT))
-            ugst_cell = Paragraph("0.00   0.00", ps(f"r8{idx}", 7, align=TA_RIGHT))
-            igst_cell = Paragraph(f"{full_rate:.0f}%   {igst_amt:.2f}", ps(f"r9{idx}", 7, align=TA_RIGHT))
-        else:
-            cgst_cell = Paragraph(f"{half_rate:.0f}%   {cgst_amt:.2f}", ps(f"r7{idx}", 7, align=TA_RIGHT))
-            ugst_cell = Paragraph(f"{half_rate:.0f}%   {cgst_amt:.2f}", ps(f"r8{idx}", 7, align=TA_RIGHT))
-            igst_cell = Paragraph("0.00   0.00", ps(f"r9{idx}", 7, align=TA_RIGHT))
+        def _c(t, n): return Paragraph(t, ps(n, 6, align=TA_RIGHT))
+        def _cc(t, n): return Paragraph(t, ps(n, 6, align=TA_CENTER))
         rows.append([
-            Paragraph(str(idx), ps(f"r0{idx}", 7, align=TA_CENTER)),
-            Paragraph(item_name, ps(f"r1{idx}", 7)),
-            Paragraph(hsn_display, ps(f"r2{idx}", 7, align=TA_CENTER)),
-            Paragraph(str(item.quantity), ps(f"r3{idx}", 7, align=TA_CENTER)),
-            Paragraph(unit_name, ps(f"r4{idx}", 7, align=TA_CENTER)),
-            Paragraph(f"{float(item.rate):.2f}", ps(f"r5{idx}", 7, align=TA_RIGHT)),
-            Paragraph(f"{taxable:.2f}", ps(f"r6{idx}", 7, align=TA_RIGHT)),
-            cgst_cell, ugst_cell, igst_cell,
-            Paragraph(f"{amt:.2f}", ps(f"r10{idx}", 7, align=TA_RIGHT)),
+            _cc(str(idx), f"rno{idx}"),
+            Paragraph(item_name, ps(f"rd{idx}", 6)),
+            _cc(hsn_display, f"rh{idx}"),
+            _cc(str(item.quantity), f"rq{idx}"),
+            _cc(unit_name, f"ru{idx}"),
+            _c(f"{float(item.rate):.2f}", f"rr{idx}"),
+            _c(f"{dis_pct:.0f}%" if dis_pct else "0", f"rdis{idx}"),
+            _c(f"{taxable:.2f}", f"rt{idx}"),
+            # CGST
+            _cc(f"{half_rate:.0f}%" if not is_inter else "0", f"rcgr{idx}"),
+            _c(f"{cgst_amt:.2f}", f"rcga{idx}"),
+            # UTGST
+            _cc(f"{half_rate:.0f}%" if not is_inter else "0", f"rugr{idx}"),
+            _c(f"{cgst_amt:.2f}" if not is_inter else "0.00", f"ruga{idx}"),
+            # IGST
+            _cc(f"{full_rate:.0f}%" if is_inter else "0", f"rigr{idx}"),
+            _c(f"{igst_amt:.2f}", f"riga{idx}"),
+            _c(f"{amt:.2f}", f"ramt{idx}"),
         ])
 
-    # Add empty rows
-    for _ in range(max(0, 6 - len(items))):
-        rows.append([Paragraph("", ps("e", 7))] * 11)
+    # Empty filler rows
+    for i in range(max(0, 5 - len(items))):
+        rows.append([Paragraph("", ps(f"e{i}", 6))] * 15)
 
     item_t = Table(rows, colWidths=col_w)
     item_t.setStyle(TableStyle([
-        ("BOX", (0,0), (-1,-1), 0.5, colors.black),
+        ("BOX",       (0,0), (-1,-1), 0.5, colors.black),
         ("INNERGRID", (0,0), (-1,-1), 0.25, colors.grey),
-        ("BACKGROUND", (0,0), (-1,0), LBLUE),
-        ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
-        ("FONTSIZE", (0,0), (-1,-1), 7),
-        ("ALIGN", (0,0), (-1,-1), "CENTER"),
-        ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
-        ("PADDING", (0,0), (-1,-1), 2),
+        ("BACKGROUND",(0,0), (-1,1),  LBLUE),
+        ("FONTSIZE",  (0,0), (-1,-1), 6),
+        ("ALIGN",     (0,0), (-1,-1), "CENTER"),
+        ("VALIGN",    (0,0), (-1,-1), "MIDDLE"),
+        ("PADDING",   (0,0), (-1,-1), 2),
+        # Span single-column headers across both header rows
+        ("SPAN", (0,0), (0,1)),   # S.NO
+        ("SPAN", (1,0), (1,1)),   # Description
+        ("SPAN", (2,0), (2,1)),   # HSN
+        ("SPAN", (3,0), (3,1)),   # Qty
+        ("SPAN", (4,0), (4,1)),   # UOM
+        ("SPAN", (5,0), (5,1)),   # Rate
+        ("SPAN", (6,0), (6,1)),   # DIS
+        ("SPAN", (7,0), (7,1)),   # Taxable Value
+        ("SPAN", (14,0),(14,1)),  # Amount
+        # Span CGST / UTGST / IGST group headers across 2 cols in row 0
+        ("SPAN", (8,0),  (9,0)),  # CGST
+        ("SPAN", (10,0), (11,0)), # UTGST
+        ("SPAN", (12,0), (13,0)), # IGST
+        # Heavier border between tax groups
+        ("LINEBEFORE", (8,0),  (-1,-1), 0.5, colors.black),
+        ("LINEBEFORE", (10,0), (-1,-1), 0.5, colors.black),
+        ("LINEBEFORE", (12,0), (-1,-1), 0.5, colors.black),
+        ("LINEBEFORE", (14,0), (-1,-1), 0.5, colors.black),
     ]))
     elements.append(item_t)
     elements.append(Spacer(1, 2*mm))
