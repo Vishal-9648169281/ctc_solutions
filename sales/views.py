@@ -333,21 +333,40 @@ def invoice_pdf(request, pk):
         Paragraph("<b>Amount</b>", ps("h10", 7, bold=True, align=TA_CENTER)),
     ]]
 
+    is_inter = (invoice.gst_type == 'I')
     total_taxable = 0
     total_cgst = 0
+    total_igst = 0
     total_amt = 0
 
     for idx, item in enumerate(items, 1):
-        taxable = float(item.quantity) * float(item.rate)
-        cgst_rate = float(item.tax_rate) / 2
-        cgst_amt = taxable * cgst_rate / 100
-        amt = taxable + (cgst_amt * 2)
+        dis_pct = float(item.discount_pct or 0)
+        taxable = float(item.quantity) * float(item.rate) * (1 - dis_pct / 100)
+        full_rate = float(item.tax_rate)
+        half_rate = full_rate / 2
+        if is_inter:
+            igst_amt = taxable * full_rate / 100
+            cgst_amt = 0
+            amt = taxable + igst_amt
+        else:
+            cgst_amt = taxable * half_rate / 100
+            igst_amt = 0
+            amt = taxable + (cgst_amt * 2)
         total_taxable += taxable
         total_cgst += cgst_amt
+        total_igst += igst_amt
         total_amt += amt
         unit_name = item.unit or (str(item.product.unit) if item.product and item.product.unit else "NOS")
         hsn_display = item.hsn_no or (item.product.hsn_code if item.product else "") or ""
         item_name = item.description or (item.product.name if item.product else "")
+        if is_inter:
+            cgst_cell = Paragraph("0.00   0.00", ps(f"r7{idx}", 7, align=TA_RIGHT))
+            ugst_cell = Paragraph("0.00   0.00", ps(f"r8{idx}", 7, align=TA_RIGHT))
+            igst_cell = Paragraph(f"{full_rate:.0f}%   {igst_amt:.2f}", ps(f"r9{idx}", 7, align=TA_RIGHT))
+        else:
+            cgst_cell = Paragraph(f"{half_rate:.0f}%   {cgst_amt:.2f}", ps(f"r7{idx}", 7, align=TA_RIGHT))
+            ugst_cell = Paragraph(f"{half_rate:.0f}%   {cgst_amt:.2f}", ps(f"r8{idx}", 7, align=TA_RIGHT))
+            igst_cell = Paragraph("0.00   0.00", ps(f"r9{idx}", 7, align=TA_RIGHT))
         rows.append([
             Paragraph(str(idx), ps(f"r0{idx}", 7, align=TA_CENTER)),
             Paragraph(item_name, ps(f"r1{idx}", 7)),
@@ -356,9 +375,7 @@ def invoice_pdf(request, pk):
             Paragraph(unit_name, ps(f"r4{idx}", 7, align=TA_CENTER)),
             Paragraph(f"{float(item.rate):.2f}", ps(f"r5{idx}", 7, align=TA_RIGHT)),
             Paragraph(f"{taxable:.2f}", ps(f"r6{idx}", 7, align=TA_RIGHT)),
-            Paragraph(f"{cgst_rate:.0f}%   {cgst_amt:.2f}", ps(f"r7{idx}", 7, align=TA_RIGHT)),
-            Paragraph(f"0.00   0.00", ps(f"r8{idx}", 7, align=TA_RIGHT)),
-            Paragraph(f"0.00   0.00", ps(f"r9{idx}", 7, align=TA_RIGHT)),
+            cgst_cell, ugst_cell, igst_cell,
             Paragraph(f"{amt:.2f}", ps(f"r10{idx}", 7, align=TA_RIGHT)),
         ])
 
@@ -421,10 +438,10 @@ def invoice_pdf(request, pk):
          Paragraph(f"Rs. {total_cgst:.2f}", ps("a2", 8, align=TA_RIGHT))],
         [Paragraph("", ps("rm3", 8)),
          Paragraph("ADD: UTGST", ps("t3", 8)),
-         Paragraph("Rs. 0.00", ps("a3", 8, align=TA_RIGHT))],
+         Paragraph(f"Rs. {total_cgst:.2f}" if not is_inter else "Rs. 0.00", ps("a3", 8, align=TA_RIGHT))],
         [Paragraph("", ps("rm4", 8)),
-         Paragraph("ADD: GST", ps("t4", 8)),
-         Paragraph(f"Rs. {total_cgst:.2f}", ps("a4", 8, align=TA_RIGHT))],
+         Paragraph("ADD: IGST", ps("t4", 8)),
+         Paragraph(f"Rs. {total_igst:.2f}", ps("a4", 8, align=TA_RIGHT))],
         [Paragraph("", ps("rm5", 8)),
          Paragraph("<b>Tax Amount - GST</b>", ps("t5", 8, bold=True)),
          Paragraph(f"<b>Rs. {float(invoice.tax_amount):.2f}</b>",
