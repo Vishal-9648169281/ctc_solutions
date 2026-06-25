@@ -17,3 +17,4 @@ else:
     u.save()
     print('Admin password updated')
 "
+python manage.py loaddata fixtures/initial_data.json && echo "Data loaded" || echo "Data load skipped (already exists)"
