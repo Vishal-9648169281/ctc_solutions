@@ -496,11 +496,15 @@ document.addEventListener('DOMContentLoaded',function(){
 // DataTables default init
 document.addEventListener('DOMContentLoaded',function(){
   document.querySelectorAll('.ctc-datatable').forEach(function(t){
-    $(t).DataTable({
-      pageLength:25,
-      language:{search:'<i class="fa fa-search"></i>',searchPlaceholder:'Search...'},
-      dom:"<'row mb-2'<'col-sm-6'l><'col-sm-6'f>>" + "<'row'<'col-12'tr>>" + "<'row mt-2'<'col-sm-5'i><'col-sm-7'p>>",
-    });
+    try {
+      $(t).DataTable({
+        pageLength:25,
+        language:{search:'<i class="fa fa-search"></i>',searchPlaceholder:'Search...'},
+        dom:"<'row mb-2'<'col-sm-6'l><'col-sm-6'f>>" + "<'row'<'col-12'tr>>" + "<'row mt-2'<'col-sm-5'i><'col-sm-7'p>>",
+        autoWidth: false,
+        columnDefs:[{targets:'_all', defaultContent:''}],
+      });
+    } catch(e) { console.warn('DataTable init error:', e.message); }
   });
 });
 </script>
