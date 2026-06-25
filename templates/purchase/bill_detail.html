@@ -6,7 +6,10 @@
         <h5><i class="fa fa-file-invoice me-2"></i>Purchase Bill &mdash; {{ bill.bill_number }}</h5>
         <div class="page-breadcrumb">Purchase &rsaquo; Bills &rsaquo; {{ bill.bill_number }}</div>
     </div>
-    <a href="/purchase/bills/" class="btn-ctc-outline"><i class="fa fa-arrow-left me-1"></i>Back</a>
+    <div class="d-flex gap-2">
+        <a href="/purchase/bills/" class="btn-ctc-outline"><i class="fa fa-arrow-left me-1"></i>Back</a>
+        <button onclick="ctcPrint(null)" class="btn-ctc"><i class="fa fa-print me-1"></i>Print / PDF</button>
+    </div>
 </div>
 <div class="ctc-card">
     <div class="ctc-card-header d-flex justify-content-between align-items-center">

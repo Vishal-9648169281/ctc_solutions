@@ -8,4 +8,6 @@ urlpatterns = [
     path('stock/', views.stock_report, name='stock_report'),
     path('payments/', views.payment_report, name='payment_report'),
     path('service/', views.service_report, name='service_report'),
+    path('credit-note-statement/', views.credit_note_statement, name='credit_note_statement'),
+    path('excel/<str:report_type>/', views.export_excel, name='export_excel'),
 ]

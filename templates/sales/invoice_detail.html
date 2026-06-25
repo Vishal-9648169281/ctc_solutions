@@ -8,9 +8,8 @@
     </div>
     <div class="d-flex gap-2">
         <a href="/sales/invoices/" class="btn-ctc-outline"><i class="fa fa-arrow-left me-1"></i>Back</a>
-        <a href="/sales/invoices/{{ invoice.pk }}/pdf/" target="_blank" class="btn-ctc-outline"><i class="fa fa-eye me-1"></i>View PDF</a>
         <a href="/sales/invoices/{{ invoice.pk }}/edit/" class="btn-ctc-outline"><i class="fa fa-pencil me-1"></i>Modify</a>
-        <button onclick="printInvoicePdf()" class="btn-ctc"><i class="fa fa-print me-1"></i>Print</button>
+        <button onclick="ctcPrint('/sales/invoices/{{ invoice.pk }}/pdf/')" class="btn-ctc"><i class="fa fa-print me-1"></i>Print / PDF</button>
     </div>
 </div>
 <div class="ctc-card">
@@ -75,9 +74,4 @@
         </div>
     </div>
 </div>
-<script>
-function printInvoicePdf() {
-    window.open('/sales/invoices/{{ invoice.pk }}/pdf/', '_blank');
-}
-</script>
 {% endblock %}

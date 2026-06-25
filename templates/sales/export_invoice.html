@@ -9,7 +9,7 @@
     </div>
     <div class="d-flex gap-2">
         <button class="btn-ctc" onclick="saveInvoice()"><i class="fa fa-save me-1"></i>Save</button>
-        <button class="btn-ctc-outline" onclick="printInvoice()"><i class="fa fa-print me-1"></i>Print</button>
+        <button class="btn-ctc-outline" onclick="ctcPrint(null)"><i class="fa fa-print me-1"></i>Print / PDF</button>
         <button class="btn-ctc-outline" onclick="newInvoice()"><i class="fa fa-file me-1"></i>New</button>
         <a href="{% url 'sales:export_list' %}" class="btn-ctc-outline"><i class="fa fa-list me-1"></i>List</a>
         <button class="btn-ctc-outline" onclick="fetchRates()"><i class="fa fa-sync me-1"></i>Live Rates</button>
@@ -403,7 +403,6 @@ function saveInvoice(){
     document.getElementById('expForm').submit();
 }
 function newInvoice(){if(confirm('Clear form for new invoice?'))location.reload();}
-function printInvoice(){window.print();}
 function currencyChanged(){const c=document.getElementById('inv_curr').value;console.log('Currency set to:'+c);}
 function numToWords(n){n=Math.floor(n);if(n===0)return'Zero';const a=['','One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten','Eleven','Twelve','Thirteen','Fourteen','Fifteen','Sixteen','Seventeen','Eighteen','Nineteen'];const b=['','','Twenty','Thirty','Forty','Fifty','Sixty','Seventy','Eighty','Ninety'];function words(n){if(n<20)return a[n];if(n<100)return b[Math.floor(n/10)]+(n%10?' '+a[n%10]:'');if(n<1000)return a[Math.floor(n/100)]+' Hundred'+(n%100?' '+words(n%100):'');if(n<100000)return words(Math.floor(n/1000))+' Thousand'+(n%1000?' '+words(n%1000):'');if(n<10000000)return words(Math.floor(n/100000))+' Lakh'+(n%100000?' '+words(n%100000):'');return words(Math.floor(n/10000000))+' Crore'+(n%10000000?' '+words(n%10000000):'');}return words(n);}
 window.addEventListener('load',function(){addBlankRows(5);fetchRates();});

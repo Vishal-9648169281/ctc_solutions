@@ -10,6 +10,7 @@
         {% if note.status != 'approved' %}
         <a href="/credit-note/approve/{{ note.pk }}/" class="btn-ctc"><i class="fa fa-check-circle me-1"></i>Approve</a>
         {% endif %}
+        <button onclick="ctcPrint(null)" class="btn-ctc"><i class="fa fa-print me-1"></i>Print / PDF</button>
         <a href="/credit-note/?type={{ note.note_type }}" class="btn-ctc-outline"><i class="fa fa-arrow-left me-1"></i>Back</a>
     </div>
 </div>

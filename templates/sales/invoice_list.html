@@ -45,7 +45,7 @@
                 </td>
                 <td>
                     <a href="/sales/invoices/{{ inv.pk }}/" class="btn-sm-icon btn-view" title="View"><i class="fa fa-eye"></i></a>
-                    <a href="/sales/invoices/{{ inv.pk }}/pdf/" target="_blank" class="btn-sm-icon btn-print" title="PDF"><i class="fa fa-file-pdf"></i></a>
+                    <button onclick="ctcPrint('/sales/invoices/{{ inv.pk }}/pdf/')" class="btn-sm-icon btn-print" title="Print / PDF"><i class="fa fa-print"></i></button>
                     <a href="/sales/invoices/delete/{{ inv.pk }}/" class="btn-sm-icon btn-delete" title="Delete" onclick="return confirm('Delete?')"><i class="fa fa-trash"></i></a>
                 </td>
             </tr>

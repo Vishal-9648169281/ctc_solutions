@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+{% block title %}Credit Note Statement{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h5><i class="fa fa-file-circle-minus me-2"></i>Credit Note Statement</h5>
+        <div class="page-breadcrumb">Reports &rsaquo; Credit Note Statement</div>
+    </div>
+    <div class="d-flex gap-2">
+        <button class="btn-ctc" onclick="ctcPrint()"><i class="fa fa-print me-1"></i>Print / PDF</button>
+        <a href="/reports/excel/credit_note/?from_date={{ from_date }}&to_date={{ to_date }}" class="btn-ctc-outline"><i class="fa fa-file-excel me-1"></i>Excel</a>
+    </div>
+</div>
+<div class="ctc-card mb-3">
+    <div class="ctc-card-body">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label-sm">From Date</label>
+                <input type="date" name="from_date" value="{{ from_date }}" class="form-control form-control-sm">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label-sm">To Date</label>
+                <input type="date" name="to_date" value="{{ to_date }}" class="form-control form-control-sm">
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn-ctc w-100">Search</button>
+            </div>
+        </form>
+    </div>
+</div>
+<div class="ctc-card">
+    <div class="ctc-card-header"><span>Credit Notes: {{ from_date }} to {{ to_date }}</span></div>
+    <div class="ctc-card-body p-0">
+        <table class="table table-hover mb-0 ctc-datatable">
+            <thead><tr>
+                <th>#</th><th>Note No</th><th>Date</th><th>Type</th><th>Party</th>
+                <th class="text-end">Net Amount</th><th>Status</th>
+            </tr></thead>
+            <tbody>
+            {% for n in notes %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td><a href="/credit-note/{{ n.pk }}/">{{ n.note_number }}</a></td>
+                <td>{{ n.date }}</td>
+                <td><span class="badge {% if n.note_type == 'vendor' %}bg-warning text-dark{% else %}bg-info text-dark{% endif %}">
+                    {% if n.note_type == 'vendor' %}Debit Note{% else %}Credit Note{% endif %}
+                </span></td>
+                <td>{{ n.party.name|default:"-" }}</td>
+                <td class="text-end fw-semibold">₹{{ n.net_amount|floatformat:2 }}</td>
+                <td><span class="badge {% if n.is_approved %}bg-success{% else %}bg-secondary{% endif %}">
+                    {% if n.is_approved %}Approved{% else %}Pending{% endif %}
+                </span></td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7" class="text-center text-muted py-4">No records found</td></tr>
+            {% endfor %}
+            </tbody>
+            {% if notes %}
+            <tfoot><tr class="table-dark">
+                <th colspan="5" class="text-end">Total:</th>
+                <th class="text-end">₹{{ total|floatformat:2 }}</th>
+                <th></th>
+            </tr></tfoot>
+            {% endif %}
+        </table>
+    </div>
+</div>
+{% endblock %}

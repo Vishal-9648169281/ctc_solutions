@@ -85,6 +85,52 @@ def payment_report(request):
     })
 
 @login_required
+def credit_note_statement(request):
+    from credit_note.models import CreditNote
+    from_date = request.GET.get('from_date', str(datetime.date.today().replace(day=1)))
+    to_date   = request.GET.get('to_date',   str(datetime.date.today()))
+    notes = CreditNote.objects.filter(
+        date__gte=from_date, date__lte=to_date
+    ).select_related('party').order_by('date')
+    total = notes.aggregate(total=Sum('net_amount'))['total'] or 0
+    return render(request, 'reports/credit_note_statement.html', {
+        'notes': notes, 'from_date': from_date, 'to_date': to_date, 'total': total,
+    })
+
+@login_required
+def export_excel(request, report_type):
+    import csv
+    from django.http import HttpResponse
+    from credit_note.models import CreditNote
+
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="{report_type}_report.csv"'
+    writer = csv.writer(response)
+
+    today = datetime.date.today()
+    from_date = request.GET.get('from_date', str(today.replace(day=1)))
+    to_date   = request.GET.get('to_date',   str(today))
+
+    if report_type == 'sales':
+        writer.writerow(['Invoice No', 'Date', 'Customer', 'Total', 'Paid', 'Balance', 'Status'])
+        for inv in SalesInvoice.objects.filter(invoice_date__gte=from_date, invoice_date__lte=to_date).select_related('customer'):
+            writer.writerow([inv.invoice_number, inv.invoice_date, inv.customer.name,
+                             inv.total_amount, inv.paid_amount, inv.balance_amount, inv.status])
+    elif report_type == 'purchase':
+        for bill in PurchaseBill.objects.filter(bill_date__gte=from_date, bill_date__lte=to_date).select_related('vendor'):
+            writer.writerow([bill.bill_number, bill.bill_date, bill.vendor.name, bill.total_amount])
+    elif report_type == 'credit_note':
+        writer.writerow(['Note No', 'Date', 'Type', 'Party', 'Net Amount'])
+        for n in CreditNote.objects.filter(date__gte=from_date, date__lte=to_date).select_related('party'):
+            writer.writerow([n.note_number, n.date, n.note_type, n.party.name if n.party else '', n.net_amount])
+    elif report_type == 'stock':
+        writer.writerow(['Code', 'Product', 'Category', 'Unit', 'HSN', 'Purchase Price', 'Sale Price', 'Stock'])
+        for p in Product.objects.filter(is_active=True).select_related('category', 'unit'):
+            writer.writerow([p.code, p.name, p.category or '', p.unit or '', p.hsn_code,
+                             p.purchase_price, p.sale_price, p.current_stock])
+    return response
+
+@login_required
 def service_report(request):
     from_date = request.GET.get('from_date', str(datetime.date.today().replace(day=1)))
     to_date = request.GET.get('to_date', str(datetime.date.today()))

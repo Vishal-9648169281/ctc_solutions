@@ -117,6 +117,7 @@ body.sidebar-collapsed #sidebar .collapse{display:none !important}
 .sub-nav-link:hover{color:#60a5fa;background:var(--sidebar-hover)}
 .sub-nav-link.active{color:#60a5fa;background:var(--sidebar-active)}
 .sub-nav-link i{font-size:.78rem;width:14px;flex-shrink:0}
+.sub-section-label{font-size:.6rem;color:#475569;text-transform:uppercase;letter-spacing:1px;padding:6px 16px 2px 28px;font-weight:700;border-top:1px solid rgba(255,255,255,.05);margin-top:2px}
 
 /* ── MAIN CONTENT ── */
 #main{
@@ -334,16 +335,36 @@ body.sidebar-collapsed #main{margin-left:var(--sidebar-collapsed)}
     </button>
   </div>
   <div class="collapse sub-nav" id="salesMenu">
-    <a href="/sales/invoices/?type=gst" class="sub-nav-link"><i class="fa fa-file-invoice"></i> GST Invoice</a>
-    <a href="/sales/invoices/?type=proforma" class="sub-nav-link"><i class="fa fa-file-lines"></i> Proforma</a>
-    <a href="/sales/invoices/?type=export" class="sub-nav-link"><i class="fa fa-globe"></i> Export Invoice</a>
+    <div class="sub-section-label">GST Invoice</div>
+    <a href="/sales/invoices/add/?type=gst" class="sub-nav-link"><i class="fa fa-plus-circle"></i> Entry</a>
+    <a href="/sales/invoices/?type=gst" class="sub-nav-link"><i class="fa fa-print"></i> Printing / List</a>
+    <a href="/reports/sales/?type=gst" class="sub-nav-link"><i class="fa fa-chart-bar"></i> Report</a>
+    <a href="/reports/excel/sales/" class="sub-nav-link"><i class="fa fa-file-excel"></i> Excel Export</a>
+    <div class="sub-section-label">Proforma</div>
+    <a href="/sales/invoices/add/?type=proforma" class="sub-nav-link"><i class="fa fa-plus-circle"></i> Entry</a>
+    <a href="/sales/invoices/?type=proforma" class="sub-nav-link"><i class="fa fa-print"></i> Printing / List</a>
+    <div class="sub-section-label">Export Invoice</div>
+    <a href="/sales/export/invoice/" class="sub-nav-link"><i class="fa fa-plus-circle"></i> Entry</a>
+    <a href="/sales/invoices/?type=export" class="sub-nav-link"><i class="fa fa-print"></i> Printing / List</a>
   </div>
 
   <div class="nav-item-wrap">
-    <a href="/credit-note/" class="nav-link-item">
+    <button class="nav-link-item" data-bs-toggle="collapse" data-bs-target="#creditMenu" aria-expanded="false">
       <i class="fa fa-file-circle-minus"></i>
       <span class="nav-label">Credit Note</span>
-    </a>
+      <i class="fa fa-chevron-right collapse-arrow ms-auto"></i>
+    </button>
+  </div>
+  <div class="collapse sub-nav" id="creditMenu">
+    <div class="sub-section-label">Credit Note</div>
+    <a href="/credit-note/add/?type=customer" class="sub-nav-link"><i class="fa fa-plus-circle"></i> Entry</a>
+    <a href="/credit-note/?type=customer" class="sub-nav-link"><i class="fa fa-print"></i> Printing / List</a>
+    <div class="sub-section-label">Credit Note (Narration)</div>
+    <a href="/credit-note/add/?type=customer" class="sub-nav-link"><i class="fa fa-plus-circle"></i> Entry</a>
+    <a href="/credit-note/?type=customer" class="sub-nav-link"><i class="fa fa-print"></i> Printing</a>
+    <a href="/reports/credit-note-statement/" class="sub-nav-link"><i class="fa fa-file-lines"></i> Statement</a>
+    <a href="/reports/excel/credit_note/" class="sub-nav-link"><i class="fa fa-file-excel"></i> Excel Export</a>
+    <a href="/reports/credit-note-statement/" class="sub-nav-link"><i class="fa fa-chart-bar"></i> Report</a>
   </div>
   <div class="nav-item-wrap">
     <a href="/projects/" class="nav-link-item">
@@ -510,6 +531,68 @@ document.addEventListener('DOMContentLoaded',function(){
   });
 });
 </script>
+
+<!-- ── GLOBAL PDF/PRINT DIALOG ── -->
+<div class="modal fade" id="printChoiceModal" tabindex="-1">
+  <div class="modal-dialog modal-sm modal-dialog-centered">
+    <div class="modal-content" style="border-radius:14px;overflow:hidden;border:none;box-shadow:0 8px 40px rgba(0,0,0,.18)">
+      <div class="modal-header" style="background:linear-gradient(135deg,#1e3a8a,#1e40af);color:#fff;padding:12px 18px;border:none">
+        <h6 class="modal-title mb-0"><i class="fa fa-print me-2"></i>Print Options</h6>
+        <button type="button" class="btn-close btn-close-white btn-sm" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4 text-center">
+        <p class="text-muted small mb-3">Choose output format:</p>
+        <div class="d-flex gap-3 justify-content-center">
+          <button id="btnPDF" class="btn btn-danger px-4 py-3" style="border-radius:12px;min-width:110px" onclick="doPrintChoice('pdf')">
+            <i class="fa fa-file-pdf fa-2x d-block mb-1"></i>
+            <span style="font-size:.8rem;font-weight:600">PDF</span>
+          </button>
+          <button id="btnPrint" class="btn btn-primary px-4 py-3" style="border-radius:12px;min-width:110px" onclick="doPrintChoice('print')">
+            <i class="fa fa-print fa-2x d-block mb-1"></i>
+            <span style="font-size:.8rem;font-weight:600">Print</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+var _printChoiceUrl = null;
+var _printChoiceModal = null;
+document.addEventListener('DOMContentLoaded', function(){
+  _printChoiceModal = new bootstrap.Modal(document.getElementById('printChoiceModal'));
+});
+
+// Call this from any page: ctcPrint('/sales/invoices/5/pdf/')
+function ctcPrint(pdfUrl) {
+  _printChoiceUrl = pdfUrl || null;
+  _printChoiceModal.show();
+}
+
+function doPrintChoice(choice) {
+  _printChoiceModal.hide();
+  if (choice === 'pdf') {
+    if (_printChoiceUrl) {
+      window.open(_printChoiceUrl, '_blank');
+    } else {
+      // Try to find PDF link on current page
+      var pdfLink = document.querySelector('a[href*="/pdf/"]');
+      if (pdfLink) { window.open(pdfLink.href, '_blank'); }
+      else { window.print(); }
+    }
+  } else {
+    if (_printChoiceUrl) {
+      // Open PDF in new tab then trigger print
+      var w = window.open(_printChoiceUrl, '_blank');
+      if (w) { w.onload = function(){ w.print(); }; }
+    } else {
+      window.print();
+    }
+  }
+}
+</script>
+
 {% block extra_js %}{% endblock %}
 </body>
 </html>
