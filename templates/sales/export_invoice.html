@@ -107,32 +107,59 @@
 
     <!-- Currency Conversion -->
     <div class="ctc-card mb-3">
-        <div class="ctc-card-header"><span><i class="fa fa-exchange-alt me-2"></i>Currency Conversion</span></div>
+        <div class="ctc-card-header">
+            <span><i class="fa fa-exchange-alt me-2"></i>Currency Conversion</span>
+            <div class="d-flex gap-2 align-items-center">
+                <span class="badge bg-secondary" id="rate_mode_badge">Manual</span>
+                <button type="button" class="btn btn-sm btn-success" onclick="fetchRates()" id="btn_live_rate">
+                    <i class="fa fa-wifi me-1"></i>Fetch Live Rate
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="switchToManual()">
+                    <i class="fa fa-pencil-alt me-1"></i>Enter Manual
+                </button>
+            </div>
+        </div>
         <div class="ctc-card-body">
             <div class="row g-3">
                 <div class="col-md-4">
                     <label class="form-label fw-semibold small">1 USD = &#8377; INR</label>
                     <div class="input-group">
-                        <input type="number" id="usd_inr" class="form-control" value="83.50" step="0.01" oninput="recalcAll()">
-                        <span class="input-group-text" id="usd_lbl">&#8377; 83.50</span>
+                        <span class="input-group-text"><i class="fa fa-dollar-sign"></i></span>
+                        <input type="number" id="usd_inr" class="form-control" value="83.50" step="0.01" oninput="onManualInput()">
+                        <span class="input-group-text fw-bold text-success" id="usd_lbl">&#8377;83.50</span>
                     </div>
-                    <small class="text-muted" id="usd_status">Manual rate</small>
+                    <small id="usd_status" class="text-muted"><i class="fa fa-edit me-1"></i>Manual rate</small>
                 </div>
                 <div class="col-md-4">
                     <label class="form-label fw-semibold small">1 CAD = &#8377; INR</label>
                     <div class="input-group">
-                        <input type="number" id="cad_inr" class="form-control" value="61.20" step="0.01" oninput="recalcAll()">
-                        <span class="input-group-text" id="cad_lbl">&#8377; 61.20</span>
+                        <span class="input-group-text"><i class="fa fa-dollar-sign"></i></span>
+                        <input type="number" id="cad_inr" class="form-control" value="61.20" step="0.01" oninput="onManualInput()">
+                        <span class="input-group-text fw-bold text-success" id="cad_lbl">&#8377;61.20</span>
                     </div>
-                    <small class="text-muted" id="cad_status">Manual rate</small>
+                    <small id="cad_status" class="text-muted"><i class="fa fa-edit me-1"></i>Manual rate</small>
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label fw-semibold small">1 CAD = $ USD</label>
+                    <label class="form-label fw-semibold small">1 CAD = $ USD <small class="text-muted">(auto)</small></label>
                     <div class="input-group">
-                        <input type="number" id="cad_usd" class="form-control" value="0.74" step="0.001" readonly>
-                        <span class="input-group-text" id="cadusd_lbl">$ 0.74</span>
+                        <span class="input-group-text"><i class="fa fa-sync"></i></span>
+                        <input type="number" id="cad_usd" class="form-control bg-light" value="0.74" step="0.001" readonly>
+                        <span class="input-group-text fw-bold text-primary" id="cadusd_lbl">$0.74</span>
                     </div>
-                    <small class="text-muted">Auto calculated</small>
+                    <small class="text-muted"><i class="fa fa-calculator me-1"></i>Auto calculated</small>
+                </div>
+            </div>
+            <div id="live_rate_info" class="mt-2 d-none">
+                <div class="alert alert-success py-1 px-3 mb-0 small">
+                    <i class="fa fa-check-circle me-1"></i>
+                    <span id="live_rate_msg">Live rates loaded</span>
+                    <span class="float-end text-muted" id="live_rate_time"></span>
+                </div>
+            </div>
+            <div id="manual_rate_info" class="mt-2">
+                <div class="alert alert-info py-1 px-3 mb-0 small">
+                    <i class="fa fa-info-circle me-1"></i>
+                    Enter exchange rates manually above, or click <b>Fetch Live Rate</b> to auto-fill from internet.
                 </div>
             </div>
         </div>
@@ -304,16 +331,60 @@ function recalcTotals(){
     document.getElementById('h_total_usd').value=totUsd.toFixed(2);document.getElementById('h_total_cad').value=totCad.toFixed(2);
     document.getElementById('h_total_amount').value=totInr.toFixed(2);
 }
+function onManualInput(){
+    const usd=parseFloat(document.getElementById('usd_inr').value)||0;
+    const cad=parseFloat(document.getElementById('cad_inr').value)||0;
+    document.getElementById('usd_lbl').textContent='₹'+usd.toFixed(2);
+    document.getElementById('cad_lbl').textContent='₹'+cad.toFixed(2);
+    if(usd&&cad){const cu=cad/usd;document.getElementById('cad_usd').value=cu.toFixed(4);document.getElementById('cadusd_lbl').textContent='$'+cu.toFixed(4);}
+    recalcAll();
+}
+function switchToManual(){
+    document.getElementById('usd_inr').removeAttribute('readonly');
+    document.getElementById('cad_inr').removeAttribute('readonly');
+    document.getElementById('rate_mode_badge').textContent='Manual';
+    document.getElementById('rate_mode_badge').className='badge bg-secondary';
+    document.getElementById('live_rate_info').classList.add('d-none');
+    document.getElementById('manual_rate_info').classList.remove('d-none');
+    document.getElementById('usd_status').innerHTML='<i class="fa fa-edit me-1"></i>Manual rate';
+    document.getElementById('cad_status').innerHTML='<i class="fa fa-edit me-1"></i>Manual rate';
+    document.getElementById('usd_inr').focus();
+}
 async function fetchRates(){
+    const btn=document.getElementById('btn_live_rate');
+    btn.innerHTML='<i class="fa fa-spinner fa-spin me-1"></i>Fetching...';
+    btn.disabled=true;
     try{
-        const res=await fetch('https://api.exchangerate-api.com/v4/latest/INR'),data=await res.json();
+        const res=await fetch('https://api.exchangerate-api.com/v4/latest/INR');
+        const data=await res.json();
         if(data.rates){
-            const usdRate=data.rates['USD']?1/data.rates['USD']:83.50,cadRate=data.rates['CAD']?1/data.rates['CAD']:61.20;
-            document.getElementById('usd_inr').value=usdRate.toFixed(4);document.getElementById('cad_inr').value=cadRate.toFixed(4);
-            document.getElementById('usd_status').textContent='Live rate fetched';document.getElementById('cad_status').textContent='Live rate fetched';
+            const usdRate=data.rates['USD']?1/data.rates['USD']:83.50;
+            const cadRate=data.rates['CAD']?1/data.rates['CAD']:61.20;
+            const cadUsd=usdRate?cadRate/usdRate:0.74;
+            document.getElementById('usd_inr').value=usdRate.toFixed(4);
+            document.getElementById('cad_inr').value=cadRate.toFixed(4);
+            document.getElementById('cad_usd').value=cadUsd.toFixed(4);
+            document.getElementById('usd_lbl').textContent='₹'+usdRate.toFixed(2);
+            document.getElementById('cad_lbl').textContent='₹'+cadRate.toFixed(2);
+            document.getElementById('cadusd_lbl').textContent='$'+cadUsd.toFixed(4);
+            document.getElementById('usd_status').innerHTML='<i class="fa fa-wifi me-1 text-success"></i>Live rate';
+            document.getElementById('cad_status').innerHTML='<i class="fa fa-wifi me-1 text-success"></i>Live rate';
+            document.getElementById('rate_mode_badge').textContent='Live';
+            document.getElementById('rate_mode_badge').className='badge bg-success';
+            document.getElementById('live_rate_info').classList.remove('d-none');
+            document.getElementById('manual_rate_info').classList.add('d-none');
+            const now=new Date();
+            document.getElementById('live_rate_msg').textContent='Live rates loaded — 1 USD = ₹'+usdRate.toFixed(2)+', 1 CAD = ₹'+cadRate.toFixed(2);
+            document.getElementById('live_rate_time').textContent=now.toLocaleTimeString();
             recalcAll();
         }
-    }catch(e){console.log('Rate fetch failed');}
+    }catch(e){
+        document.getElementById('usd_status').innerHTML='<i class="fa fa-exclamation-triangle me-1 text-danger"></i>Fetch failed — using manual';
+        document.getElementById('cad_status').innerHTML='<i class="fa fa-exclamation-triangle me-1 text-danger"></i>Fetch failed — using manual';
+        document.getElementById('manual_rate_info').classList.remove('d-none');
+    }
+    btn.innerHTML='<i class="fa fa-wifi me-1"></i>Fetch Live Rate';
+    btn.disabled=false;
 }
 function collectItems(){
     const items=[];
