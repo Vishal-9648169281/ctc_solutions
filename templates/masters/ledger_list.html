@@ -59,8 +59,10 @@
                         <input type="text" name="ledger_code" id="f_code" class="form-control form-control-sm" required placeholder="e.g. CSH001">
                     </div>
                     <div class="mb-3">
-                        <label class="form-label-sm">Ledger Group</label>
-                        <select name="ledger_group" id="f_grp" class="form-select form-select-sm">
+                        <label class="form-label-sm">Ledger Group <small class="text-muted">(select or type custom)</small></label>
+                        <input type="text" name="ledger_group" id="f_grp" class="form-control form-control-sm"
+                               list="grpList" placeholder="Select or type group name..." autocomplete="off">
+                        <datalist id="grpList">
                             <option value="PURCHASES">Purchases</option>
                             <option value="SALES">Sales</option>
                             <option value="EXPENSES_PAYABLE">Expenses Payable</option>
@@ -72,7 +74,8 @@
                             <option value="FIXED_ASSETS">Fixed Assets</option>
                             <option value="CAPITAL">Capital Account</option>
                             <option value="OTHER">Other</option>
-                        </select>
+                        </datalist>
+                        <small class="text-muted"><i class="fa fa-info-circle me-1"></i>Click arrow or type to search/add custom group</small>
                     </div>
                     <div class="mb-3">
                         <label class="form-label-sm">Opening Balance</label>
@@ -108,7 +111,7 @@ function openM(m) {
     document.getElementById('f_pk').value   = m === 'add' ? '' : sD.pk;
     document.getElementById('f_desc').value = m === 'add' ? '' : sD.desc;
     document.getElementById('f_code').value = m === 'add' ? '' : sD.code;
-    document.getElementById('f_grp').value  = m === 'add' ? 'OTHER' : sD.grp;
+    document.getElementById('f_grp').value  = m === 'add' ? '' : sD.grp;
     document.getElementById('f_op').value   = m === 'add' ? '0.00' : sD.op;
     ledgerModal.show();
     setTimeout(() => document.getElementById('f_desc').focus(), 400);
