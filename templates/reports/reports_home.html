@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+{% block title %}Reports{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h5><i class="fa fa-chart-bar me-2"></i>Reports</h5>
+        <div class="page-breadcrumb">Reports</div>
+    </div>
+</div>
+<div class="row g-3">
+    <div class="col-md-4">
+        <a href="/reports/sales/" class="text-decoration-none">
+            <div class="ctc-card h-100">
+                <div class="ctc-card-body p-4 text-center">
+                    <i class="fa fa-file-invoice-dollar fa-3x text-primary mb-3 d-block"></i>
+                    <h5>Sales Report</h5>
+                    <p class="text-muted small">View all sales invoices by date range</p>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-4">
+        <a href="/reports/purchase/" class="text-decoration-none">
+            <div class="ctc-card h-100">
+                <div class="ctc-card-body p-4 text-center">
+                    <i class="fa fa-shopping-cart fa-3x text-warning mb-3 d-block"></i>
+                    <h5>Purchase Report</h5>
+                    <p class="text-muted small">View all purchase bills by date range</p>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-4">
+        <a href="/reports/stock/" class="text-decoration-none">
+            <div class="ctc-card h-100">
+                <div class="ctc-card-body p-4 text-center">
+                    <i class="fa fa-boxes fa-3x text-success mb-3 d-block"></i>
+                    <h5>Stock Report</h5>
+                    <p class="text-muted small">Current stock levels for all products</p>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-4">
+        <a href="/reports/payments/" class="text-decoration-none">
+            <div class="ctc-card h-100">
+                <div class="ctc-card-body p-4 text-center">
+                    <i class="fa fa-coins fa-3x text-info mb-3 d-block"></i>
+                    <h5>Payment Report</h5>
+                    <p class="text-muted small">Received and paid payments summary</p>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-4">
+        <a href="/reports/service/" class="text-decoration-none">
+            <div class="ctc-card h-100">
+                <div class="ctc-card-body p-4 text-center">
+                    <i class="fa fa-phone-alt fa-3x text-danger mb-3 d-block"></i>
+                    <h5>Service Report</h5>
+                    <p class="text-muted small">Service calls summary by date range</p>
+                </div>
+            </div>
+        </a>
+    </div>
+</div>
+{% endblock %}

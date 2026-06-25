@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block title %}Stock Report{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h5><i class="fa fa-boxes me-2"></i>Stock Report</h5>
+        <div class="page-breadcrumb">Reports &rsaquo; Stock</div>
+    </div>
+    <a href="/reports/" class="btn-ctc-outline"><i class="fa fa-arrow-left me-1"></i>Back</a>
+</div>
+{% if low_stock_count > 0 %}
+<div class="alert alert-danger"><i class="fa fa-exclamation-triangle me-2"></i>{{ low_stock_count }} products have zero or low stock!</div>
+{% endif %}
+<div class="ctc-card">
+    <div class="ctc-card-header"><span><i class="fa fa-list me-2"></i>Current Stock Levels</span></div>
+    <div class="ctc-card-body p-0">
+        <table class="table table-hover mb-0 ctc-datatable">
+            <thead><tr><th>#</th><th>Product</th><th>Code</th><th>Category</th><th>Unit</th><th>Purchase Price</th><th>Sale Price</th><th>Current Stock</th><th>Min Stock</th><th>Status</th></tr></thead>
+            <tbody>
+            {% for p in products %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td><strong>{{ p.name }}</strong></td>
+                <td>{{ p.code }}</td>
+                <td>{{ p.category }}</td>
+                <td>{{ p.unit }}</td>
+                <td>Rs.{{ p.purchase_price }}</td>
+                <td>Rs.{{ p.sale_price }}</td>
+                <td>
+                    {% if p.current_stock <= 0 %}<span class="badge-danger">{{ p.current_stock }}</span>
+                    {% elif p.current_stock <= p.min_stock %}<span class="badge-warning">{{ p.current_stock }}</span>
+                    {% else %}<span class="badge-success">{{ p.current_stock }}</span>{% endif %}
+                </td>
+                <td>{{ p.min_stock }}</td>
+                <td>
+                    {% if p.current_stock <= 0 %}<span class="badge-danger">Out of Stock</span>
+                    {% elif p.current_stock <= p.min_stock %}<span class="badge-warning">Low Stock</span>
+                    {% else %}<span class="badge-success">In Stock</span>{% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="10" class="text-center text-muted py-4">No products found</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

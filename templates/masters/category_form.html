@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h5><i class="fa fa-tags me-2"></i>{{ title }}</h5>
+    <div class="page-breadcrumb">Masters &rsaquo; <span>Category</span></div>
+  </div>
+  <a href="/masters/categories/" class="btn-ctc-outline"><i class="fa fa-arrow-left me-1"></i>Back</a>
+</div>
+<div class="row justify-content-center">
+  <div class="col-md-6">
+    <div class="ctc-card">
+      <div class="ctc-card-header"><h6><i class="fa fa-pen-to-square"></i>Category Details</h6></div>
+      <div class="ctc-card-body">
+        <form method="post">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label class="form-label-sm">Category Name <span class="text-danger">*</span></label>
+            <input type="text" name="name" class="form-control form-control-sm" value="{{ obj.name|default:'' }}" required autofocus placeholder="Enter category name">
+          </div>
+          <div class="mb-4">
+            <label class="form-label-sm">Description</label>
+            <input type="text" name="description" class="form-control form-control-sm" value="{{ obj.description|default:'' }}" placeholder="Optional description">
+          </div>
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn-ctc"><i class="fa fa-save me-1"></i>Save Category</button>
+            <a href="/masters/categories/" class="btn-ctc-outline">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

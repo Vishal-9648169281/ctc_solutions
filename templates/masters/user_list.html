@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}User Master{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h5><i class="fa fa-users-cog me-2"></i>User Master</h5>
+        <div class="page-breadcrumb">Masters &rsaquo; Users</div>
+    </div>
+    <div class="d-flex gap-2">
+        <button class="btn-ctc" onclick="openM()"><i class="fa fa-plus me-1"></i>Add</button>
+        <button class="btn-ctc-outline" onclick="delRec()"><i class="fa fa-trash me-1"></i>Delete</button>
+    </div>
+</div>
+<div class="ctc-card">
+    <div class="ctc-card-header"><span><i class="fa fa-list me-2"></i>All Users</span></div>
+    <div class="ctc-card-body p-0">
+        <table class="table table-hover mb-0 ctc-datatable" id="tb">
+            <thead><tr><th>User Name</th><th>Role</th></tr></thead>
+            <tbody>
+            {% for u in users %}
+            <tr style="cursor:pointer" onclick="selRow(this,'{{ u.pk }}','{{ u.username|escapejs }}')">
+                <td>{{ u.username|upper }}</td>
+                <td>{% if u.profile %}{{ u.profile.role|upper }}{% else %}ADMIN{% endif %}</td>
+            </tr>{% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ADD MODAL -->
+<div class="modal fade" id="userModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header" style="background:linear-gradient(135deg,#1a237e,#1565c0);color:white">
+                <h5 class="modal-title">Add User</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" id="uF" action="{% url 'user_add' %}">
+                {% csrf_token %}
+                <input type="hidden" name="pk" id="f_pk">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">User Name</label>
+                        <input type="text" name="username" id="f_un" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Password</label>
+                        <input type="password" name="password" id="f_pw" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Confirm Password</label>
+                        <input type="password" name="confirm_password" id="f_cp" class="form-control" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn-ctc">Confirm</button>
+                    <button type="button" class="btn-ctc-outline" data-bs-dismiss="modal">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+let sP=null,sU='';
+const userModal = new bootstrap.Modal(document.getElementById('userModal'));
+function selRow(tr,pk,uname){
+    document.querySelectorAll('#tb tbody tr').forEach(r=>r.classList.remove('table-active'));
+    tr.classList.add('table-active');sP=pk;sU=uname;
+}
+function openM(){
+    document.getElementById('f_pk').value='';
+    ['f_un','f_pw','f_cp'].forEach(id=>document.getElementById(id).value='');
+    userModal.show();
+}
+function delRec(){
+    if(!sP){alert('Select a user!');return;}
+    if(confirm('Delete: '+sU+'?')){
+        const f=document.createElement('form');f.method='post';
+        f.action="{% url 'user_delete' 0 %}".replace('/0/','/'+sP+'/');
+        f.innerHTML='{% csrf_token %}';document.body.appendChild(f);f.submit();
+    }
+}
+</script>
+{% endblock %}

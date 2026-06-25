@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}CTC Solution{% endblock %}</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+<style>
+:root {
+  --sidebar-w: 250px;
+  --sidebar-collapsed: 64px;
+  --topbar-h: 58px;
+  --primary: #1e40af;
+  --primary-dark: #1e3a8a;
+  --primary-light: #3b82f6;
+  --accent: #0ea5e9;
+  --sidebar-bg: #0f172a;
+  --sidebar-hover: rgba(59,130,246,.12);
+  --sidebar-active: rgba(59,130,246,.18);
+  --text-sidebar: #94a3b8;
+  --text-sidebar-active: #60a5fa;
+  --bg: #f1f5f9;
+  --card-bg: #ffffff;
+  --border: #e2e8f0;
+  --text: #1e293b;
+  --text-muted: #64748b;
+  --success: #059669;
+  --warning: #d97706;
+  --danger: #dc2626;
+  --radius: 12px;
+  --shadow: 0 1px 3px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.06);
+  --shadow-lg: 0 8px 30px rgba(0,0,0,.12);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden}
+a{text-decoration:none}
+
+/* ── TOPBAR ── */
+#topbar{
+  position:fixed;top:0;left:0;right:0;height:var(--topbar-h);
+  background:linear-gradient(135deg,var(--primary-dark),var(--primary));
+  z-index:1100;display:flex;align-items:center;padding:0 20px;
+  box-shadow:0 2px 20px rgba(30,58,138,.35);
+  gap:12px;
+}
+#sidebar-toggle{
+  width:36px;height:36px;border:none;background:rgba(255,255,255,.1);
+  border-radius:8px;color:#fff;font-size:1.1rem;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:background .2s;flex-shrink:0;
+}
+#sidebar-toggle:hover{background:rgba(255,255,255,.2)}
+.brand{display:flex;align-items:center;gap:10px;flex:1}
+.brand-icon{width:36px;height:36px;background:rgba(255,255,255,.15);border-radius:9px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.1rem}
+.brand-text .name{color:#fff;font-weight:800;font-size:1rem;letter-spacing:.3px;white-space:nowrap}
+.brand-text .sub{color:rgba(255,255,255,.6);font-size:.68rem;white-space:nowrap}
+#topbar-datetime{color:rgba(255,255,255,.8);font-size:.75rem;text-align:right;line-height:1.5;white-space:nowrap}
+.topbar-actions{display:flex;align-items:center;gap:8px}
+.topbar-btn{width:36px;height:36px;background:rgba(255,255,255,.1);border:none;border-radius:8px;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.9rem;transition:background .2s;position:relative}
+.topbar-btn:hover{background:rgba(255,255,255,.2)}
+.notif-badge{position:absolute;top:6px;right:6px;width:8px;height:8px;background:#ef4444;border-radius:50%;border:2px solid var(--primary)}
+.user-menu-btn{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.15);border-radius:25px;padding:5px 12px 5px 5px;color:#fff;cursor:pointer;transition:background .2s}
+.user-menu-btn:hover{background:rgba(255,255,255,.2)}
+.user-avatar{width:28px;height:28px;background:linear-gradient(135deg,#818cf8,#60a5fa);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.8rem;color:#fff}
+.user-name{font-size:.82rem;font-weight:600}
+.user-role-chip{font-size:.62rem;padding:1px 7px;border-radius:10px;background:rgba(255,255,255,.18);margin-left:2px}
+
+/* ── SIDEBAR ── */
+#sidebar{
+  position:fixed;top:var(--topbar-h);left:0;bottom:0;
+  width:var(--sidebar-w);background:var(--sidebar-bg);
+  z-index:1050;overflow-y:auto;overflow-x:hidden;
+  transition:width .3s cubic-bezier(.4,0,.2,1);
+  box-shadow:2px 0 20px rgba(0,0,0,.2);
+}
+#sidebar::-webkit-scrollbar{width:3px}
+#sidebar::-webkit-scrollbar-thumb{background:#334155;border-radius:2px}
+body.sidebar-collapsed #sidebar{width:var(--sidebar-collapsed)}
+body.sidebar-collapsed .nav-label,.body.sidebar-collapsed .nav-section-title,.body.sidebar-collapsed .collapse-arrow{display:none}
+body.sidebar-collapsed .sidebar-section-title{opacity:0;height:0;overflow:hidden;padding:0;margin:0}
+body.sidebar-collapsed .sidebar-user-section{display:none}
+body.sidebar-collapsed #sidebar .collapse{display:none !important}
+
+.sidebar-user-section{padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.06);margin-bottom:6px}
+.sidebar-avatar{width:36px;height:36px;background:linear-gradient(135deg,#818cf8,#60a5fa);border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.9rem;color:#fff;flex-shrink:0}
+.sidebar-user-info .s-name{color:#e2e8f0;font-size:.85rem;font-weight:600}
+.sidebar-user-info .s-role{font-size:.65rem;padding:2px 8px;border-radius:10px;font-weight:600;margin-top:3px;display:inline-block}
+.role-admin{background:#7c3aed;color:#fff}
+.role-accountant{background:#0891b2;color:#fff}
+.role-sales{background:#059669;color:#fff}
+.role-engineer{background:#d97706;color:#fff}
+
+.sidebar-section-title{padding:12px 18px 4px;color:#475569;font-size:.62rem;text-transform:uppercase;letter-spacing:1.5px;font-weight:700;transition:all .3s}
+
+.nav-item-wrap{padding:1px 8px}
+.nav-link-item{
+  display:flex;align-items:center;gap:10px;padding:8px 12px;
+  color:var(--text-sidebar);border-radius:8px;font-size:.83rem;
+  font-weight:500;transition:all .2s;cursor:pointer;
+  white-space:nowrap;overflow:hidden;border:none;background:none;width:100%;text-align:left;
+}
+.nav-link-item:hover{color:var(--text-sidebar-active);background:var(--sidebar-hover)}
+.nav-link-item.active{color:var(--text-sidebar-active);background:var(--sidebar-active);font-weight:600}
+.nav-link-item i{font-size:.9rem;width:18px;flex-shrink:0;text-align:center}
+.nav-label{transition:opacity .2s}
+.collapse-arrow{margin-left:auto;font-size:.7rem;transition:transform .3s;color:#64748b}
+.nav-link-item[aria-expanded="true"] .collapse-arrow{transform:rotate(90deg)}
+.sub-nav{padding:2px 8px 4px}
+.sub-nav-link{
+  display:flex;align-items:center;gap:8px;padding:6px 12px 6px 38px;
+  color:#64748b;border-radius:7px;font-size:.79rem;font-weight:500;
+  transition:all .2s;white-space:nowrap;overflow:hidden;
+}
+.sub-nav-link:hover{color:#60a5fa;background:var(--sidebar-hover)}
+.sub-nav-link.active{color:#60a5fa;background:var(--sidebar-active)}
+.sub-nav-link i{font-size:.78rem;width:14px;flex-shrink:0}
+
+/* ── MAIN CONTENT ── */
+#main{
+  margin-left:var(--sidebar-w);margin-top:var(--topbar-h);
+  padding:22px;min-height:calc(100vh - var(--topbar-h));
+  transition:margin-left .3s cubic-bezier(.4,0,.2,1);
+}
+body.sidebar-collapsed #main{margin-left:var(--sidebar-collapsed)}
+
+/* ── CARDS ── */
+.ctc-card{background:var(--card-bg);border-radius:var(--radius);box-shadow:var(--shadow);border:none;overflow:hidden}
+.ctc-card-header{padding:14px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)}
+.ctc-card-header h6{font-weight:700;color:var(--text);margin:0;font-size:.9rem;display:flex;align-items:center;gap:8px}
+.ctc-card-header h6 i{color:var(--primary-light);font-size:.85rem}
+.ctc-card-body{padding:20px}
+
+/* ── PAGE HEADER ── */
+.page-header{
+  background:var(--card-bg);border-radius:var(--radius);padding:14px 20px;
+  margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;
+  box-shadow:var(--shadow);border-left:4px solid var(--primary);
+}
+.page-header h5{margin:0;color:var(--primary-dark);font-weight:700;font-size:1rem;display:flex;align-items:center;gap:8px}
+.page-breadcrumb{font-size:.75rem;color:var(--text-muted);margin-top:2px}
+.page-breadcrumb span{color:var(--primary)}
+
+/* ── STAT CARDS ── */
+.stat-card{border-radius:14px;padding:20px;color:#fff;border:none;box-shadow:var(--shadow-lg);position:relative;overflow:hidden}
+.stat-card::before{content:'';position:absolute;top:-20px;right:-20px;width:100px;height:100px;border-radius:50%;background:rgba(255,255,255,.08)}
+.stat-card .s-num{font-size:2rem;font-weight:800;line-height:1}
+.stat-card .s-label{font-size:.75rem;opacity:.85;margin-top:4px;font-weight:500}
+.stat-card .s-icon{font-size:2.4rem;opacity:.2;position:absolute;right:18px;bottom:14px}
+.stat-card .s-change{font-size:.72rem;margin-top:8px;opacity:.9}
+.stat-card .s-change.up::before{content:'↑ '}
+.stat-card .s-change.down::before{content:'↓ '}
+
+/* ── TABLES ── */
+.ctc-table{font-size:.83rem}
+.ctc-table th{background:#f8fafc;color:var(--primary-dark);font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.5px;border-bottom:2px solid var(--border);white-space:nowrap;padding:10px 14px}
+.ctc-table td{padding:9px 14px;vertical-align:middle;border-bottom:1px solid #f1f5f9;color:var(--text)}
+.ctc-table tbody tr:hover{background:#f8fafc}
+.ctc-table tbody tr:last-child td{border-bottom:none}
+
+/* ── BADGES ── */
+.badge-success{background:rgba(5,150,105,.1);color:#059669;padding:3px 10px;border-radius:20px;font-size:.72rem;font-weight:600}
+.badge-warning{background:rgba(217,119,6,.1);color:#d97706;padding:3px 10px;border-radius:20px;font-size:.72rem;font-weight:600}
+.badge-danger{background:rgba(220,38,38,.1);color:#dc2626;padding:3px 10px;border-radius:20px;font-size:.72rem;font-weight:600}
+.badge-info{background:rgba(14,165,233,.1);color:#0ea5e9;padding:3px 10px;border-radius:20px;font-size:.72rem;font-weight:600}
+.badge-primary{background:rgba(30,64,175,.1);color:#1e40af;padding:3px 10px;border-radius:20px;font-size:.72rem;font-weight:600}
+.badge-secondary{background:rgba(100,116,139,.1);color:#64748b;padding:3px 10px;border-radius:20px;font-size:.72rem;font-weight:600}
+
+/* ── BUTTONS ── */
+.btn-ctc{background:linear-gradient(135deg,var(--primary-dark),var(--primary));border:none;color:#fff;padding:7px 18px;border-radius:8px;font-size:.83rem;font-weight:600;transition:all .2s;display:inline-flex;align-items:center;gap:7px}
+.btn-ctc:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(30,64,175,.35);color:#fff}
+.btn-ctc-outline{background:transparent;border:1.5px solid var(--primary);color:var(--primary);padding:6px 16px;border-radius:8px;font-size:.83rem;font-weight:600;transition:all .2s;display:inline-flex;align-items:center;gap:7px}
+.btn-ctc-outline:hover{background:var(--primary);color:#fff}
+.btn-sm-icon{width:30px;height:30px;border-radius:7px;border:none;display:inline-flex;align-items:center;justify-content:center;font-size:.8rem;cursor:pointer;transition:all .2s}
+.btn-view{background:rgba(14,165,233,.1);color:#0ea5e9}
+.btn-view:hover{background:#0ea5e9;color:#fff}
+.btn-edit{background:rgba(217,119,6,.1);color:#d97706}
+.btn-edit:hover{background:#d97706;color:#fff}
+.btn-delete{background:rgba(220,38,38,.1);color:#dc2626}
+.btn-delete:hover{background:#dc2626;color:#fff}
+.btn-print{background:rgba(30,64,175,.1);color:#1e40af}
+.btn-print:hover{background:#1e40af;color:#fff}
+
+/* ── FORMS ── */
+.form-label-sm{font-size:.78rem;font-weight:600;color:#334155;margin-bottom:4px}
+.form-control-sm,.form-select-sm{font-size:.83rem;border-radius:7px;border:1.5px solid var(--border);padding:6px 10px}
+.form-control-sm:focus,.form-select-sm:focus{border-color:var(--primary-light);box-shadow:0 0 0 3px rgba(59,130,246,.12)}
+.form-section-title{font-size:.75rem;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:.5px;padding-bottom:6px;border-bottom:2px solid #e0e7ff;margin:16px 0 10px}
+
+/* ── ALERTS ── */
+.alert{border-radius:10px;border:none;font-size:.85rem;padding:10px 16px}
+.alert-success{background:rgba(5,150,105,.08);color:#065f46;border-left:4px solid #059669}
+.alert-danger{background:rgba(220,38,38,.08);color:#991b1b;border-left:4px solid #dc2626}
+.alert-warning{background:rgba(217,119,6,.08);color:#92400e;border-left:4px solid #d97706}
+.alert-info{background:rgba(14,165,233,.08);color:#075985;border-left:4px solid #0ea5e9}
+
+/* ── QUICK ACTION CARDS ── */
+.quick-card{border-radius:12px;padding:18px;background:var(--card-bg);box-shadow:var(--shadow);transition:all .25s;cursor:pointer;border:1.5px solid var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:10px;text-decoration:none;color:var(--text)}
+.quick-card:hover{transform:translateY(-4px);box-shadow:var(--shadow-lg);border-color:var(--primary-light);color:var(--primary)}
+.quick-card .q-icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.3rem}
+.quick-card .q-label{font-size:.8rem;font-weight:600}
+
+/* ── PRINT ── */
+@media print{
+  #topbar,#sidebar,.page-header .btn-ctc,.page-header .btn-ctc-outline,.alert,#exitBtn,.no-print{display:none!important}
+  #main{margin:0!important;padding:0!important}
+  .ctc-card{box-shadow:none!important;border:1px solid #e2e8f0}
+}
+@media(max-width:768px){
+  #sidebar{width:0;overflow:hidden}
+  body.sidebar-open #sidebar{width:var(--sidebar-w)}
+  #main{margin-left:0}
+}
+
+/* ── COMPACT FORM ── */
+.compact-form .form-row{display:flex;align-items:center;margin-bottom:6px;gap:8px}
+.compact-form .form-row label{flex:0 0 140px;font-size:.78rem;font-weight:600;color:#334155;margin:0}
+.compact-form .form-row .form-control,.compact-form .form-row .form-select{flex:1;height:32px;padding:4px 10px;font-size:.83rem;border-radius:7px;border:1.5px solid var(--border)}
+.compact-form .form-row .form-control:focus,.compact-form .form-row .form-select:focus{border-color:var(--primary-light);box-shadow:0 0 0 3px rgba(59,130,246,.12);outline:none}
+.compact-form .form-row textarea.form-control{height:auto}
+.compact-form .section-label{font-size:.72rem;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:.4px;margin:12px 0 6px;border-bottom:1px solid #e0e7ff;padding-bottom:4px}
+</style>
+{% block extra_css %}{% endblock %}
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div id="topbar">
+  <button id="sidebar-toggle" onclick="toggleSidebar()" title="Toggle Sidebar">
+    <i class="fa fa-bars"></i>
+  </button>
+  <div class="brand">
+    <div class="brand-icon"><i class="fa fa-desktop"></i></div>
+    <div class="brand-text">
+      <div class="name">CHANDIGARH TEAM COMPUTERS</div>
+      <div class="sub">Sector 22-B, Chandigarh | CTC Solution ERP</div>
+    </div>
+  </div>
+  <div id="topbar-datetime"></div>
+  <div class="topbar-actions ms-3">
+    <div class="dropdown">
+      <button class="user-menu-btn dropdown-toggle" data-bs-toggle="dropdown" style="border:none">
+        <div class="user-avatar">{{ request.user.username|first|upper }}</div>
+        <span class="user-name">{{ request.user.username }}</span>
+        {% if request.user.is_superuser %}
+        <span class="user-role-chip">ADMIN</span>
+        {% else %}
+        <span class="user-role-chip">{{ request.user.profile.get_role_display|upper }}</span>
+        {% endif %}
+      </button>
+      <ul class="dropdown-menu dropdown-menu-end shadow-lg" style="border-radius:12px;border:none;min-width:180px;padding:8px">
+        {% if request.user.is_superuser %}
+        <li><a class="dropdown-item" href="/admin/" style="border-radius:8px;font-size:.85rem"><i class="fa fa-gear me-2 text-primary"></i>Admin Panel</a></li>
+        <li><a class="dropdown-item" href="/users/" style="border-radius:8px;font-size:.85rem"><i class="fa fa-users me-2 text-primary"></i>Manage Users</a></li>
+        <li><hr class="dropdown-divider"></li>
+        {% endif %}
+        <li><a class="dropdown-item text-danger" href="/logout/" style="border-radius:8px;font-size:.85rem"><i class="fa fa-right-from-bracket me-2"></i>Logout</a></li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- SIDEBAR -->
+{% with role=request.user.profile.role %}
+<div id="sidebar">
+  <div class="sidebar-user-section">
+    <div class="d-flex align-items-center gap-2">
+      <div class="sidebar-avatar">{{ request.user.username|first|upper }}</div>
+      <div class="sidebar-user-info">
+        <div class="s-name">{{ request.user.get_full_name|default:request.user.username }}</div>
+        {% if request.user.is_superuser %}
+        <span class="s-role role-admin">Admin (Owner)</span>
+        {% else %}
+        <span class="s-role role-{{ role }}">{{ request.user.profile.get_role_display }}</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Dashboard -->
+  <div class="nav-item-wrap">
+    <a href="/dashboard/" class="nav-link-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+      <i class="fa fa-gauge-high"></i>
+      <span class="nav-label">Dashboard</span>
+    </a>
+  </div>
+
+  {% if request.user.is_superuser or role == 'admin' or role == 'accountant' or role == 'sales' %}
+  <!-- Masters -->
+  <div class="sidebar-section-title">Masters</div>
+  <div class="nav-item-wrap">
+    <button class="nav-link-item" data-bs-toggle="collapse" data-bs-target="#masterMenu" aria-expanded="false">
+      <i class="fa fa-database"></i>
+      <span class="nav-label">Masters</span>
+      <i class="fa fa-chevron-right collapse-arrow ms-auto"></i>
+    </button>
+  </div>
+  <div class="collapse sub-nav" id="masterMenu">
+    <a href="/masters/products/" class="sub-nav-link"><i class="fa fa-box"></i> Products</a>
+    <a href="/masters/categories/" class="sub-nav-link"><i class="fa fa-tags"></i> Categories</a>
+    <a href="/masters/units/" class="sub-nav-link"><i class="fa fa-ruler"></i> Units</a>
+    <a href="/masters/party/" class="sub-nav-link"><i class="fa fa-people-group"></i> Party Master</a>
+    <a href="/masters/company/" class="sub-nav-link"><i class="fa fa-building"></i> Company Master</a>
+    <a href="/masters/salesman/" class="sub-nav-link"><i class="fa fa-id-badge"></i> Salesmen</a>
+    <a href="/masters/area/" class="sub-nav-link"><i class="fa fa-map-location-dot"></i> Area Master</a>
+    <a href="/masters/gststate/" class="sub-nav-link"><i class="fa fa-map-pin"></i> GST State</a>
+    <a href="/masters/gstmaster/" class="sub-nav-link"><i class="fa fa-percent"></i> GST Master</a>
+    <a href="/masters/ledger/" class="sub-nav-link"><i class="fa fa-book"></i> Ledger Master</a>
+    <a href="/masters/rate-modification/" class="sub-nav-link"><i class="fa fa-indian-rupee-sign"></i> Rate Modification</a>
+  </div>
+
+  <!-- Transactions -->
+  <div class="sidebar-section-title">Transactions</div>
+  <div class="nav-item-wrap">
+    <button class="nav-link-item" data-bs-toggle="collapse" data-bs-target="#purchaseMenu" aria-expanded="false">
+      <i class="fa fa-cart-plus"></i>
+      <span class="nav-label">Purchase</span>
+      <i class="fa fa-chevron-right collapse-arrow ms-auto"></i>
+    </button>
+  </div>
+  <div class="collapse sub-nav" id="purchaseMenu">
+    <a href="/purchase/bills/" class="sub-nav-link"><i class="fa fa-receipt"></i> Purchase Bills</a>
+  </div>
+
+  <div class="nav-item-wrap">
+    <button class="nav-link-item" data-bs-toggle="collapse" data-bs-target="#salesMenu" aria-expanded="false">
+      <i class="fa fa-bag-shopping"></i>
+      <span class="nav-label">Sales</span>
+      <i class="fa fa-chevron-right collapse-arrow ms-auto"></i>
+    </button>
+  </div>
+  <div class="collapse sub-nav" id="salesMenu">
+    <a href="/sales/invoices/?type=gst" class="sub-nav-link"><i class="fa fa-file-invoice"></i> GST Invoice</a>
+    <a href="/sales/invoices/?type=proforma" class="sub-nav-link"><i class="fa fa-file-lines"></i> Proforma</a>
+    <a href="/sales/invoices/?type=export" class="sub-nav-link"><i class="fa fa-globe"></i> Export Invoice</a>
+  </div>
+
+  <div class="nav-item-wrap">
+    <a href="/credit-note/" class="nav-link-item">
+      <i class="fa fa-file-circle-minus"></i>
+      <span class="nav-label">Credit Note</span>
+    </a>
+  </div>
+  <div class="nav-item-wrap">
+    <a href="/projects/" class="nav-link-item">
+      <i class="fa fa-diagram-project"></i>
+      <span class="nav-label">Project Manager</span>
+    </a>
+  </div>
+  {% endif %}
+
+  {% if request.user.is_superuser or role == 'admin' or role == 'engineer' or role == 'sales' %}
+  <!-- Service -->
+  <div class="sidebar-section-title">Service</div>
+  <div class="nav-item-wrap">
+    <a href="/service/" class="nav-link-item">
+      <i class="fa fa-headset"></i>
+      <span class="nav-label">Call Receive</span>
+    </a>
+  </div>
+  {% endif %}
+
+  {% if request.user.is_superuser or role == 'admin' or role == 'accountant' %}
+  <!-- Payments -->
+  <div class="sidebar-section-title">Payments</div>
+  <div class="nav-item-wrap">
+    <a href="/payments/receive/" class="nav-link-item">
+      <i class="fa fa-money-bill-trend-up"></i>
+      <span class="nav-label">Receive Payment</span>
+    </a>
+  </div>
+  <div class="nav-item-wrap">
+    <a href="/payments/receipt/" class="nav-link-item">
+      <i class="fa fa-wallet"></i>
+      <span class="nav-label">Payment Receipt</span>
+    </a>
+  </div>
+
+  <!-- Reports -->
+  <div class="sidebar-section-title">Reports & Accounts</div>
+  <div class="nav-item-wrap">
+    <a href="/reports/" class="nav-link-item">
+      <i class="fa fa-chart-bar"></i>
+      <span class="nav-label">Reports</span>
+    </a>
+  </div>
+  <div class="nav-item-wrap">
+    <a href="/accounts/" class="nav-link-item">
+      <i class="fa fa-book-open"></i>
+      <span class="nav-label">Accounts</span>
+    </a>
+  </div>
+  {% endif %}
+
+  {% if request.user.is_superuser or role == 'admin' %}
+  <div class="sidebar-section-title">Administration</div>
+  <div class="nav-item-wrap">
+    <a href="/users/" class="nav-link-item">
+      <i class="fa fa-users-gear"></i>
+      <span class="nav-label">User Management</span>
+    </a>
+  </div>
+  {% endif %}
+
+  <div class="sidebar-section-title">System</div>
+  <div class="nav-item-wrap">
+    <a href="/logout/" class="nav-link-item" style="color:#f87171">
+      <i class="fa fa-right-from-bracket"></i>
+      <span class="nav-label">Logout</span>
+    </a>
+  </div>
+  <div style="height:30px"></div>
+</div>
+{% endwith %}
+
+<!-- MAIN -->
+<div id="main">
+  {% if messages %}
+  <div class="mb-3">
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+      <i class="fa fa-circle-info me-2"></i>{{ message }}
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% block content %}{% endblock %}
+</div>
+
+<!-- Exit FAB -->
+<button id="exitBtn" onclick="history.back()" title="Go Back (Esc)"
+  style="position:fixed;bottom:24px;right:24px;z-index:1040;width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#475569,#1e293b);color:#fff;border:none;box-shadow:0 4px 16px rgba(0,0,0,.3);font-size:1.1rem;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s">
+  <i class="fa fa-arrow-left"></i>
+</button>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+<script>
+// Datetime
+function updateTime(){
+  const n=new Date();
+  const d=n.toLocaleDateString('en-IN',{weekday:'short',day:'2-digit',month:'short',year:'numeric'});
+  const t=n.toLocaleTimeString('en-IN');
+  document.getElementById('topbar-datetime').innerHTML='<div>'+d+'</div><div style="text-align:right">'+t+'</div>';
+}
+updateTime(); setInterval(updateTime,1000);
+
+// Sidebar toggle
+function toggleSidebar(){
+  document.body.classList.toggle('sidebar-collapsed');
+  localStorage.setItem('sidebar',document.body.classList.contains('sidebar-collapsed')?'collapsed':'open');
+}
+if(localStorage.getItem('sidebar')==='collapsed') document.body.classList.add('sidebar-collapsed');
+
+// Active nav
+(function(){
+  const path=window.location.pathname;
+  document.querySelectorAll('.sub-nav-link,.nav-link-item').forEach(a=>{
+    if(a.href && new URL(a.href,location.origin).pathname===path) a.classList.add('active');
+  });
+  // Open parent collapse if child active
+  document.querySelectorAll('.sub-nav-link.active').forEach(a=>{
+    const col=a.closest('.collapse');
+    if(col){
+      new bootstrap.Collapse(col,{toggle:false}).show();
+      const btn=document.querySelector('[data-bs-target="#'+col.id+'"]');
+      if(btn){btn.setAttribute('aria-expanded','true');btn.classList.add('active');}
+    }
+  });
+})();
+
+// Enter key → next field
+document.addEventListener('DOMContentLoaded',function(){
+  document.querySelectorAll('form').forEach(function(form){
+    const fields=Array.from(form.querySelectorAll(
+      'input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="checkbox"]):not([type="radio"]),select,textarea'
+    ));
+    fields.forEach(function(field,idx){
+      field.addEventListener('keydown',function(e){
+        if(e.key==='Enter'&&field.tagName.toLowerCase()!=='textarea'){
+          e.preventDefault();
+          const next=fields[idx+1];
+          if(next){next.focus();if(next.select)next.select();}
+          else{const s=form.querySelector('button[type="submit"],input[type="submit"]');if(s)s.focus();}
+        }
+      });
+    });
+  });
+});
+
+// DataTables default init
+document.addEventListener('DOMContentLoaded',function(){
+  document.querySelectorAll('.ctc-datatable').forEach(function(t){
+    $(t).DataTable({
+      pageLength:25,
+      language:{search:'<i class="fa fa-search"></i>',searchPlaceholder:'Search...'},
+      dom:"<'row mb-2'<'col-sm-6'l><'col-sm-6'f>>" + "<'row'<'col-12'tr>>" + "<'row mt-2'<'col-sm-5'i><'col-sm-7'p>>",
+    });
+  });
+});
+</script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

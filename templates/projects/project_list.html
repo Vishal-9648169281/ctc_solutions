@@ -1,0 +1,96 @@
+{% extends 'base.html' %}
+{% block title %}Project Manager{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h5><i class="fa fa-project-diagram me-2"></i>Project Manager</h5>
+        <div class="page-breadcrumb">Projects &rsaquo; All Projects</div>
+    </div>
+    <a href="/projects/add/" class="btn-ctc"><i class="fa fa-plus me-1"></i>Add New Project</a>
+</div>
+
+<!-- STATS -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="stat-card" style="background:linear-gradient(135deg,#1a237e,#1565c0)">
+            <div class="d-flex justify-content-between align-items-center">
+                <div><div class="number">{{ total_projects }}</div><div class="label">Total Projects</div></div>
+                <i class="fa fa-project-diagram icon"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card" style="background:linear-gradient(135deg,#2e7d32,#388e3c)">
+            <div class="d-flex justify-content-between align-items-center">
+                <div><div class="number">{{ live_count }}</div><div class="label">Live Projects</div></div>
+                <i class="fa fa-broadcast-tower icon"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card" style="background:linear-gradient(135deg,#c62828,#e53935)">
+            <div class="d-flex justify-content-between align-items-center">
+                <div><div class="number">{{ overdue_count }}</div><div class="label">Overdue Payments</div></div>
+                <i class="fa fa-exclamation-triangle icon"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card" style="background:linear-gradient(135deg,#e65100,#f57c00)">
+            <div class="d-flex justify-content-between align-items-center">
+                <div><div class="number">&#8377;{{ total_amc_value|floatformat:0 }}</div><div class="label">Total AMC Value</div></div>
+                <i class="fa fa-rupee-sign icon"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="ctc-card">
+    <div class="ctc-card-header"><span><i class="fa fa-list me-2"></i>All Projects ({{ projects.count }})</span></div>
+    <div class="ctc-card-body p-0">
+        <table class="table table-hover mb-0 ctc-datatable">
+            <thead>
+                <tr>
+                    <th>#</th><th>Project Name</th><th>Client</th><th>Technology</th>
+                    <th>Status</th><th>Payment Type</th><th>Amount</th><th>Payment Status</th><th>Next Due</th><th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for p in projects %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td><strong>{{ p.project_name }}</strong></td>
+                <td>{{ p.client_display }}</td>
+                <td><span class="badge-secondary">{{ p.technology|default:"-" }}</span></td>
+                <td>
+                    {% if p.status|lower == 'live' %}<span class="badge-success">{{ p.status }}</span>
+                    {% elif p.status|lower == 'stopped' %}<span class="badge-danger">{{ p.status }}</span>
+                    {% elif p.status|lower == 'on hold' %}<span class="badge-warning">{{ p.status }}</span>
+                    {% else %}<span class="badge-info">{{ p.status }}</span>{% endif %}
+                </td>
+                <td>
+                    {% if p.payment_type == 'amc' %}<span class="badge-primary">AMC</span>
+                    {% elif p.payment_type == 'subscription' %}<span class="badge-info">Subscription</span>
+                    {% else %}<span class="badge-secondary">One-Time</span>{% endif %}
+                </td>
+                <td>&#8377;{{ p.amount }}</td>
+                <td>
+                    {% if p.payment_status|lower == 'paid' %}<span class="badge-success">{{ p.payment_status }}</span>
+                    {% elif p.payment_status|lower == 'overdue' %}<span class="badge-danger">{{ p.payment_status }}</span>
+                    {% else %}<span class="badge-warning">{{ p.payment_status }}</span>{% endif %}
+                </td>
+                <td>{{ p.next_due_date|default:"-" }}</td>
+                <td>
+                    <a href="/projects/{{ p.pk }}/" class="btn-sm-icon btn-view" title="View"><i class="fa fa-eye"></i></a>
+                    <a href="/projects/{{ p.pk }}/edit/" class="btn-sm-icon btn-edit" title="Edit"><i class="fa fa-pencil"></i></a>
+                    <a href="/projects/{{ p.pk }}/delete/" class="btn-sm-icon btn-delete" title="Delete" onclick="return confirm('Remove this project?')"><i class="fa fa-trash"></i></a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="10" class="text-center text-muted py-5"><i class="fa fa-project-diagram fa-2x d-block mb-2"></i>No projects found. <a href="/projects/add/">Add your first project</a></td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

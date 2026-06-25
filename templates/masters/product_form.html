@@ -1,0 +1,117 @@
+{% extends 'base.html' %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <h5><i class="fa fa-box me-2"></i>{{ title }}</h5>
+    <div class="page-breadcrumb">Masters &rsaquo; <span>Product</span></div>
+  </div>
+  <a href="/masters/products/" class="btn-ctc-outline"><i class="fa fa-arrow-left me-1"></i>Back</a>
+</div>
+
+<form method="post">
+  {% csrf_token %}
+
+  <!-- Basic Information -->
+  <div class="ctc-card mb-3">
+    <div class="ctc-card-header"><h6><i class="fa fa-circle-info"></i>Basic Information</h6></div>
+    <div class="ctc-card-body">
+      <div class="row g-3">
+        <div class="col-md-5">
+          <label class="form-label-sm">Product Name <span class="text-danger">*</span></label>
+          <input type="text" name="name" value="{{ obj.name|default:'' }}" class="form-control form-control-sm" required autofocus placeholder="Enter product name">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label-sm">Company / Brand</label>
+          <input type="text" name="company" value="{{ obj.company|default:'' }}" class="form-control form-control-sm" placeholder="Manufacturer or brand name" list="companyList">
+          <datalist id="companyList">
+            {% for p in all_companies %}<option value="{{ p }}">{% endfor %}
+          </datalist>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label-sm">Product Code <span class="text-danger">*</span></label>
+          <input type="text" name="code" value="{{ obj.code|default:'' }}" class="form-control form-control-sm" required placeholder="Unique code">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label-sm">Category</label>
+          <select name="category" class="form-select form-select-sm">
+            <option value="">-- Select Category --</option>
+            {% for cat in categories %}
+            <option value="{{ cat.pk }}" {% if obj.category_id == cat.pk %}selected{% endif %}>{{ cat.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label-sm">Unit</label>
+          <select name="unit" class="form-select form-select-sm">
+            <option value="">-- Select Unit --</option>
+            {% for u in units %}
+            <option value="{{ u.pk }}" {% if obj.unit_id == u.pk %}selected{% endif %}>{{ u.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label-sm">HSN Code</label>
+          <input type="text" name="hsn_code" value="{{ obj.hsn_code|default:'' }}" class="form-control form-control-sm" placeholder="HSN code">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pricing & Tax -->
+  <div class="ctc-card mb-3">
+    <div class="ctc-card-header"><h6><i class="fa fa-indian-rupee-sign"></i>Pricing &amp; Tax</h6></div>
+    <div class="ctc-card-body">
+      <div class="row g-3">
+        <div class="col-md-4">
+          <label class="form-label-sm">Purchase Price</label>
+          <div class="input-group input-group-sm">
+            <span class="input-group-text">₹</span>
+            <input type="number" name="purchase_price" value="{{ obj.purchase_price|default:'0' }}" class="form-control form-control-sm" step="0.01">
+          </div>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label-sm">Sale Price</label>
+          <div class="input-group input-group-sm">
+            <span class="input-group-text">₹</span>
+            <input type="number" name="sale_price" value="{{ obj.sale_price|default:'0' }}" class="form-control form-control-sm" step="0.01">
+          </div>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label-sm">Tax Rate (GST)</label>
+          <select name="tax_rate" class="form-select form-select-sm">
+            <option value="0" {% if obj.tax_rate == 0 %}selected{% endif %}>0%</option>
+            <option value="5" {% if obj.tax_rate == 5 %}selected{% endif %}>5%</option>
+            <option value="12" {% if obj.tax_rate == 12 %}selected{% endif %}>12%</option>
+            <option value="18" {% if obj.tax_rate == 18 %}selected{% endif %}>18%</option>
+            <option value="28" {% if obj.tax_rate == 28 %}selected{% endif %}>28%</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stock -->
+  <div class="ctc-card mb-3">
+    <div class="ctc-card-header"><h6><i class="fa fa-warehouse"></i>Stock</h6></div>
+    <div class="ctc-card-body">
+      <div class="row g-3">
+        <div class="col-md-4">
+          <label class="form-label-sm">Opening Stock</label>
+          <input type="number" name="opening_stock" value="{{ obj.opening_stock|default:'0' }}" class="form-control form-control-sm" step="0.01">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label-sm">Minimum Stock</label>
+          <input type="number" name="min_stock" value="{{ obj.min_stock|default:'0' }}" class="form-control form-control-sm" step="0.01">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="d-flex gap-2 mb-4">
+    <button type="submit" class="btn-ctc"><i class="fa fa-save me-1"></i>Save Product</button>
+    <a href="/masters/products/" class="btn-ctc-outline">Cancel</a>
+  </div>
+</form>
+{% endblock %}

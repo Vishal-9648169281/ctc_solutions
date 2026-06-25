@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block title %}Customers{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h5><i class="fa fa-users me-2"></i>Customers</h5>
+        <div class="page-breadcrumb">Masters &rsaquo; Customers</div>
+    </div>
+    <a href="/masters/customers/add/" class="btn-ctc"><i class="fa fa-plus me-1"></i>Add Customer</a>
+</div>
+<div class="ctc-card">
+    <div class="ctc-card-header">
+        <span><i class="fa fa-list me-2"></i>All Customers</span>
+    </div>
+    <div class="ctc-card-body p-0">
+        <table class="table table-hover mb-0 ctc-datatable">
+            <thead><tr><th>#</th><th>Name</th><th>Phone</th><th>City</th><th>GSTIN</th><th>Balance</th><th>Actions</th></tr></thead>
+            <tbody>
+            {% for c in customers %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td><strong>{{ c.name }}</strong></td>
+                <td>{{ c.phone }}</td>
+                <td>{{ c.city }}</td>
+                <td>{{ c.gstin|default:"-" }}</td>
+                <td>Rs.{{ c.opening_balance }}</td>
+                <td>
+                    <a href="/masters/customers/edit/{{ c.pk }}/" class="btn-sm-icon btn-edit" title="Edit"><i class="fa fa-pencil"></i></a>
+                    <a href="/masters/customers/delete/{{ c.pk }}/" class="btn-sm-icon btn-delete" title="Delete" onclick="return confirm('Delete this customer?')"><i class="fa fa-trash"></i></a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7" class="text-center text-muted py-4"><i class="fa fa-inbox fa-2x d-block mb-2"></i>No customers found</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}GST State Code Master{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h5><i class="fa fa-flag me-2"></i>GST State Code Master</h5>
+        <div class="page-breadcrumb">Masters &rsaquo; GST States</div>
+    </div>
+    <div class="d-flex gap-2">
+        <button class="btn-ctc" onclick="openM('add')"><i class="fa fa-plus me-1"></i>Add</button>
+        <button class="btn-ctc-outline" onclick="openM('modify')"><i class="fa fa-pencil me-1"></i>Modify</button>
+        <button class="btn-ctc-outline" onclick="delRec()"><i class="fa fa-trash me-1"></i>Delete</button>
+    </div>
+</div>
+<div class="ctc-card">
+    <div class="ctc-card-header"><span><i class="fa fa-list me-2"></i>All GST States</span></div>
+    <div class="ctc-card-body p-0">
+        <table class="table table-hover mb-0 ctc-datatable" id="tb">
+            <thead><tr><th>State Code</th><th>State Name</th></tr></thead>
+            <tbody>
+            {% for s in states %}
+            <tr style="cursor:pointer" onclick="selRow(this,'{{ s.pk }}','{{ s.state_code }}','{{ s.state_name|escapejs }}')">
+                <td>{{ s.state_code }}</td><td>{{ s.state_name }}</td>
+            </tr>{% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal fade" id="stateModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header" style="background:linear-gradient(135deg,#1a237e,#1565c0);color:white">
+                <h5 class="modal-title" id="stateModalTitle">Add State</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" id="sForm" action="{% url 'gststate_save' %}">
+                {% csrf_token %}
+                <input type="hidden" name="pk" id="f_pk">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">State Code (2 chars)</label>
+                        <input type="text" name="state_code" id="f_sc" class="form-control" maxlength="2">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">State Name</label>
+                        <input type="text" name="state_name" id="f_sn" class="form-control">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn-ctc">Confirm</button>
+                    <button type="button" class="btn-ctc-outline" onclick="resetAdd()">New</button>
+                    <button type="button" class="btn-ctc-outline" data-bs-dismiss="modal">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+let sP=null,sC='',sN='';
+const stateModal = new bootstrap.Modal(document.getElementById('stateModal'));
+function selRow(tr,pk,code,name){
+    document.querySelectorAll('#tb tbody tr').forEach(r=>r.classList.remove('table-active'));
+    tr.classList.add('table-active');sP=pk;sC=code;sN=name;
+}
+function openM(m){
+    if(m==='add'){
+        document.getElementById('stateModalTitle').textContent='Add State';
+        document.getElementById('f_pk').value='';document.getElementById('f_sc').value='';document.getElementById('f_sn').value='';
+        setRO(false);
+    } else {
+        if(!sP){alert('Select!');return;}
+        document.getElementById('stateModalTitle').textContent='Modify State';
+        document.getElementById('f_pk').value=sP;document.getElementById('f_sc').value=sC;document.getElementById('f_sn').value=sN;
+        setRO(false);
+    }
+    stateModal.show();
+}
+function resetAdd(){document.getElementById('f_pk').value='';document.getElementById('f_sc').value='';document.getElementById('f_sn').value='';document.getElementById('stateModalTitle').textContent='Add State';document.getElementById('f_sc').focus();}
+function setRO(v){['f_sc','f_sn'].forEach(id=>document.getElementById(id).readOnly=v);}
+function delRec(){
+    if(!sP){alert('Select!');return;}
+    if(confirm('Delete: '+sN+'?')){
+        const f=document.createElement('form');f.method='post';
+        f.action="{% url 'gststate_delete' 0 %}".replace('/0/','/'+sP+'/');
+        f.innerHTML='{% csrf_token %}';document.body.appendChild(f);f.submit();
+    }
+}
+</script>
+{% endblock %}

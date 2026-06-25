@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+{% block title %}Service Calls{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h5><i class="fa fa-phone-alt me-2"></i>Service Calls</h5>
+        <div class="page-breadcrumb">Service &rsaquo; Calls</div>
+    </div>
+    <a href="/service/add/" class="btn-ctc"><i class="fa fa-plus me-1"></i>New Call</a>
+</div>
+<div class="ctc-card mb-3">
+    <div class="ctc-card-body py-2">
+        <div class="d-flex gap-2 flex-wrap">
+            <a href="/service/" class="btn-ctc-outline {% if not status_filter %}active{% endif %}">All</a>
+            <a href="/service/?status=open" class="btn-ctc-outline">Open</a>
+            <a href="/service/?status=inprogress" class="btn-ctc-outline">In Progress</a>
+            <a href="/service/?status=resolved" class="btn-ctc-outline">Resolved</a>
+            <a href="/service/?status=closed" class="btn-ctc-outline">Closed</a>
+        </div>
+    </div>
+</div>
+<div class="ctc-card">
+    <div class="ctc-card-header"><span><i class="fa fa-list me-2"></i>All Service Calls</span></div>
+    <div class="ctc-card-body p-0">
+        <table class="table table-hover mb-0 ctc-datatable">
+            <thead><tr><th>#</th><th>Call No</th><th>Customer</th><th>Issue</th><th>Date</th><th>Priority</th><th>Status</th><th>Assigned</th><th>Actions</th></tr></thead>
+            <tbody>
+            {% for call in calls %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td><strong>{{ call.call_number }}</strong></td>
+                <td>{{ call.customer.name }}</td>
+                <td>{{ call.issue_type }}</td>
+                <td>{{ call.call_date }}</td>
+                <td>
+                    {% if call.priority == 'urgent' %}<span class="badge-danger">Urgent</span>
+                    {% elif call.priority == 'high' %}<span class="badge-warning">High</span>
+                    {% elif call.priority == 'medium' %}<span class="badge-info">Medium</span>
+                    {% else %}<span class="badge-secondary">Low</span>{% endif %}
+                </td>
+                <td>
+                    {% if call.status == 'open' %}<span class="badge-danger">Open</span>
+                    {% elif call.status == 'inprogress' %}<span class="badge-warning">In Progress</span>
+                    {% elif call.status == 'resolved' %}<span class="badge-success">Resolved</span>
+                    {% else %}<span class="badge-secondary">Closed</span>{% endif %}
+                </td>
+                <td>{{ call.assigned_to|default:"-" }}</td>
+                <td>
+                    <a href="/service/detail/{{ call.pk }}/" class="btn-sm-icon btn-view" title="View"><i class="fa fa-eye"></i></a>
+                    <a href="/service/edit/{{ call.pk }}/" class="btn-sm-icon btn-edit" title="Edit"><i class="fa fa-pencil"></i></a>
+                    <a href="/service/delete/{{ call.pk }}/" class="btn-sm-icon btn-delete" title="Delete" onclick="return confirm('Delete?')"><i class="fa fa-trash"></i></a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="9" class="text-center text-muted py-4"><i class="fa fa-inbox fa-2x d-block mb-2"></i>No service calls found</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

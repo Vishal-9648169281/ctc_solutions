@@ -1,0 +1,100 @@
+{% extends 'base.html' %}
+{% block title %}Area Master{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h5><i class="fa fa-map-marker-alt me-2"></i>Area Master</h5>
+        <div class="page-breadcrumb">Masters &rsaquo; Areas</div>
+    </div>
+    <div class="d-flex gap-2">
+        <button class="btn-ctc" onclick="vfpAction('add')"><i class="fa fa-plus me-1"></i>Add</button>
+        <button class="btn-ctc-outline" onclick="vfpAction('modify')"><i class="fa fa-pencil me-1"></i>Modify</button>
+        <button class="btn-ctc-outline" onclick="vfpAction('delete')"><i class="fa fa-trash me-1"></i>Delete</button>
+    </div>
+</div>
+<div class="ctc-card">
+    <div class="ctc-card-header"><span><i class="fa fa-list me-2"></i>All Areas</span></div>
+    <div class="ctc-card-body p-0">
+        <table class="table table-hover mb-0 ctc-datatable">
+            <thead><tr><th>#</th><th>Code</th><th>Name</th></tr></thead>
+            <tbody>
+            {% for a in areas %}
+            <tr onclick="vfpSelectRow(this, {{ a.pk }})" data-name="{{ a.name }}" style="cursor:pointer">
+                <td>{{ forloop.counter }}</td>
+                <td>{{ a.code }}</td>
+                <td><strong>{{ a.name }}</strong></td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="3" class="text-center text-muted py-4">No areas found</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="modal fade" id="areaModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" action="/masters/area/save/">
+                {% csrf_token %}
+                <input type="hidden" name="pk" id="area_pk">
+                <div class="modal-header" style="background:linear-gradient(135deg,#1a237e,#1565c0);color:white">
+                    <h5 class="modal-title" id="areaModalTitle">Add Area</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Name</label>
+                        <input type="text" name="name" id="area_name" class="form-control" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn-ctc">Confirm</button>
+                    <button type="button" class="btn-ctc-outline" data-bs-dismiss="modal">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+let vfpSelectedRow = null;
+function vfpSelectRow(el, id) {
+    document.querySelectorAll('.table-active').forEach(r => r.classList.remove('table-active'));
+    el.classList.add('table-active');
+    vfpSelectedRow = id;
+}
+const areaModal = new bootstrap.Modal(document.getElementById('areaModal'));
+function vfpAction(action) {
+    if (action === 'add') {
+        document.getElementById('areaModalTitle').textContent = 'Add Area';
+        document.getElementById('area_pk').value = '';
+        document.getElementById('area_name').value = '';
+        areaModal.show();
+        return;
+    }
+    if (action === 'modify') {
+        if (!vfpSelectedRow) { alert('Select a row first'); return; }
+        const row = document.querySelector(`tr[onclick*="${vfpSelectedRow})"]`);
+        document.getElementById('areaModalTitle').textContent = 'Modify Area';
+        document.getElementById('area_pk').value = vfpSelectedRow;
+        document.getElementById('area_name').value = row.dataset.name;
+        areaModal.show();
+        return;
+    }
+    if (action === 'delete') {
+        if (!vfpSelectedRow) { alert('Select a row first'); return; }
+        if (confirm('Delete this area?')) window.location.href = `/masters/area/delete/${vfpSelectedRow}/`;
+        return;
+    }
+}
+document.addEventListener('keydown', function(e) {
+    const tag = (e.target.tagName || '').toLowerCase();
+    if (tag === 'input' || tag === 'textarea' || tag === 'select') { if (e.key !== 'Escape') return; }
+    if (e.key === 'F1') { e.preventDefault(); vfpAction('add'); }
+    if (e.key === 'F2') { e.preventDefault(); vfpAction('modify'); }
+    if (e.key === 'F3') { e.preventDefault(); vfpAction('delete'); }
+});
+</script>
+{% endblock %}

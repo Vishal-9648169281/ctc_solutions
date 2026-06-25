@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% block title %}Call {{ call.call_number }}{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h5><i class="fa fa-phone me-2"></i>Service Call &mdash; {{ call.call_number }}</h5>
+        <div class="page-breadcrumb">Service &rsaquo; Calls &rsaquo; {{ call.call_number }}</div>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="/service/" class="btn-ctc-outline"><i class="fa fa-arrow-left me-1"></i>Back</a>
+        <a href="/service/edit/{{ call.pk }}/" class="btn-ctc"><i class="fa fa-pencil me-1"></i>Edit</a>
+    </div>
+</div>
+<div class="ctc-card">
+    <div class="ctc-card-header d-flex justify-content-between align-items-center">
+        <span>Call Details</span>
+        {% if call.status == 'open' %}<span class="badge-danger">Open</span>
+        {% elif call.status == 'inprogress' %}<span class="badge-warning">In Progress</span>
+        {% elif call.status == 'resolved' %}<span class="badge-success">Resolved</span>
+        {% else %}<span class="badge-secondary">Closed</span>{% endif %}
+    </div>
+    <div class="ctc-card-body">
+        <div class="row g-4">
+            <div class="col-md-6">
+                <table class="table table-sm">
+                    <tr><td class="fw-semibold">Call Number</td><td>{{ call.call_number }}</td></tr>
+                    <tr><td class="fw-semibold">Customer</td><td>{{ call.customer.name }}</td></tr>
+                    <tr><td class="fw-semibold">Phone</td><td>{{ call.customer.phone }}</td></tr>
+                    <tr><td class="fw-semibold">Contact Person</td><td>{{ call.contact_person|default:"-" }}</td></tr>
+                    <tr><td class="fw-semibold">Contact Phone</td><td>{{ call.contact_phone|default:"-" }}</td></tr>
+                    <tr><td class="fw-semibold">Call Date</td><td>{{ call.call_date }}</td></tr>
+                </table>
+            </div>
+            <div class="col-md-6">
+                <table class="table table-sm">
+                    <tr><td class="fw-semibold">Issue Type</td><td>{{ call.issue_type }}</td></tr>
+                    <tr><td class="fw-semibold">Priority</td><td>{{ call.get_priority_display }}</td></tr>
+                    <tr><td class="fw-semibold">Assigned To</td><td>{{ call.assigned_to|default:"-" }}</td></tr>
+                    <tr><td class="fw-semibold">Resolved Date</td><td>{{ call.resolved_date|default:"-" }}</td></tr>
+                    <tr><td class="fw-semibold">Charges</td><td>Rs.{{ call.charges }}</td></tr>
+                </table>
+            </div>
+            <div class="col-12">
+                <h6 class="fw-semibold">Description:</h6>
+                <p class="bg-light p-3 rounded">{{ call.description }}</p>
+            </div>
+            {% if call.resolution %}
+            <div class="col-12">
+                <h6 class="fw-semibold text-success">Resolution:</h6>
+                <p class="bg-light p-3 rounded">{{ call.resolution }}</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

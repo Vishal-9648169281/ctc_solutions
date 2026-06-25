@@ -1,0 +1,160 @@
+{% extends 'base.html' %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <h5><i class="fa fa-diagram-project me-2"></i>{{ title }}</h5>
+    <div class="page-breadcrumb">Projects &rsaquo; <span>Form</span></div>
+  </div>
+  <a href="/projects/" class="btn-ctc-outline"><i class="fa fa-arrow-left me-1"></i>Back to List</a>
+</div>
+
+<form method="post">
+  {% csrf_token %}
+
+  <!-- Basic Information -->
+  <div class="ctc-card mb-3">
+    <div class="ctc-card-header"><h6><i class="fa fa-circle-info"></i>Basic Information</h6></div>
+    <div class="ctc-card-body">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label-sm">Project Name <span class="text-danger">*</span></label>
+          <input type="text" name="project_name" value="{{ obj.project_name|default:'' }}" class="form-control form-control-sm" required autofocus placeholder="e.g. Inventory Management System">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label-sm">Technology Used</label>
+          <input type="text" name="technology" value="{{ obj.technology|default:'' }}" class="form-control form-control-sm" placeholder="e.g. Visual FoxPro, Django, PHP, .NET">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label-sm">Client (Master)</label>
+          <select name="client" class="form-select form-select-sm">
+            <option value="">-- Select Customer (optional) --</option>
+            {% for c in customers %}
+            <option value="{{ c.pk }}" {% if obj.client_id == c.pk %}selected{% endif %}>{{ c.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label-sm">Or Client Name (manual)</label>
+          <input type="text" name="client_name_manual" value="{{ obj.client_name_manual|default:'' }}" class="form-control form-control-sm" placeholder="If client not in master list">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label-sm">Status <span class="text-danger">*</span></label>
+          <input type="text" name="status" value="{{ obj.status|default:'Live' }}" class="form-control form-control-sm" required placeholder="Live, Stopped, On Hold...">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label-sm">Start Date</label>
+          <input type="date" name="start_date" value="{{ obj.start_date|date:'Y-m-d'|default:'' }}" class="form-control form-control-sm">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label-sm">Payment Status</label>
+          <input type="text" name="payment_status" value="{{ obj.payment_status|default:'Pending' }}" class="form-control form-control-sm" placeholder="Paid, Pending, Overdue...">
+        </div>
+        <div class="col-12">
+          <label class="form-label-sm">Description</label>
+          <textarea name="description" class="form-control form-control-sm" rows="2" placeholder="Brief description">{{ obj.description|default:'' }}</textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Payment Information -->
+  <div class="ctc-card mb-3">
+    <div class="ctc-card-header"><h6><i class="fa fa-indian-rupee-sign"></i>Payment Information</h6></div>
+    <div class="ctc-card-body">
+      <div class="row g-3">
+        <div class="col-md-4">
+          <label class="form-label-sm">Payment Type <span class="text-danger">*</span></label>
+          <select name="payment_type" id="payment_type" class="form-select form-select-sm" onchange="togglePaymentFields()" required>
+            <option value="onetime" {% if obj.payment_type == 'onetime' %}selected{% endif %}>One-Time Payment</option>
+            <option value="amc" {% if obj.payment_type == 'amc' %}selected{% endif %}>AMC (Annual)</option>
+            <option value="subscription" {% if obj.payment_type == 'subscription' %}selected{% endif %}>Monthly Subscription</option>
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label-sm">Amount (₹) <span class="text-danger">*</span></label>
+          <div class="input-group input-group-sm">
+            <span class="input-group-text">₹</span>
+            <input type="number" name="amount" value="{{ obj.amount|default:'0' }}" class="form-control form-control-sm" step="0.01" required>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label-sm">Next Due Date</label>
+          <input type="date" name="next_due_date" value="{{ obj.next_due_date|date:'Y-m-d'|default:'' }}" class="form-control form-control-sm">
+        </div>
+
+        <!-- AMC fields -->
+        <div class="col-md-4 amc-field">
+          <label class="form-label-sm">AMC Start Date</label>
+          <input type="date" name="amc_start_date" value="{{ obj.amc_start_date|date:'Y-m-d'|default:'' }}" class="form-control form-control-sm">
+        </div>
+        <div class="col-md-4 amc-field">
+          <label class="form-label-sm">AMC End Date</label>
+          <input type="date" name="amc_end_date" value="{{ obj.amc_end_date|date:'Y-m-d'|default:'' }}" class="form-control form-control-sm">
+        </div>
+
+        <!-- Subscription field -->
+        <div class="col-md-4 subscription-field">
+          <label class="form-label-sm">Monthly Due Day</label>
+          <input type="number" name="subscription_due_day" value="{{ obj.subscription_due_day|default:'' }}" class="form-control form-control-sm" min="1" max="31" placeholder="e.g. 5">
+        </div>
+
+        <div class="col-md-4">
+          <label class="form-label-sm">Last Payment Date</label>
+          <input type="date" name="last_payment_date" value="{{ obj.last_payment_date|date:'Y-m-d'|default:'' }}" class="form-control form-control-sm">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Server & Login Details -->
+  <div class="ctc-card mb-3">
+    <div class="ctc-card-header"><h6><i class="fa fa-server"></i>Server &amp; Login Details <span class="text-muted fw-normal" style="font-size:.75rem">(Optional)</span></h6></div>
+    <div class="ctc-card-body">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label-sm">Login URL</label>
+          <input type="text" name="login_url" value="{{ obj.login_url|default:'' }}" class="form-control form-control-sm" placeholder="https://...">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label-sm">Username</label>
+          <input type="text" name="login_username" value="{{ obj.login_username|default:'' }}" class="form-control form-control-sm">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label-sm">Password</label>
+          <input type="text" name="login_password" value="{{ obj.login_password|default:'' }}" class="form-control form-control-sm">
+        </div>
+        <div class="col-12">
+          <label class="form-label-sm">Server Details</label>
+          <textarea name="server_details" class="form-control form-control-sm" rows="2" placeholder="Server IP, hosting provider, database info">{{ obj.server_details|default:'' }}</textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Additional Notes -->
+  <div class="ctc-card mb-3">
+    <div class="ctc-card-header"><h6><i class="fa fa-note-sticky"></i>Additional Notes</h6></div>
+    <div class="ctc-card-body">
+      <textarea name="notes" class="form-control form-control-sm" rows="3" placeholder="Any other notes about this project...">{{ obj.notes|default:'' }}</textarea>
+    </div>
+  </div>
+
+  <div class="d-flex gap-2 mb-4">
+    <button type="submit" class="btn-ctc"><i class="fa fa-save me-1"></i>Save Project</button>
+    <a href="/projects/" class="btn-ctc-outline">Cancel</a>
+  </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function togglePaymentFields() {
+    const type = document.getElementById('payment_type').value;
+    document.querySelectorAll('.amc-field').forEach(el => el.style.display = type === 'amc' ? '' : 'none');
+    document.querySelectorAll('.subscription-field').forEach(el => el.style.display = type === 'subscription' ? '' : 'none');
+}
+document.addEventListener('DOMContentLoaded', togglePaymentFields);
+</script>
+{% endblock %}

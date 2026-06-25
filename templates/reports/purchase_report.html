@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+{% block title %}Purchase Report{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h5><i class="fa fa-shopping-cart me-2"></i>Purchase Report</h5>
+        <div class="page-breadcrumb">Reports &rsaquo; Purchase</div>
+    </div>
+    <a href="/reports/" class="btn-ctc-outline"><i class="fa fa-arrow-left me-1"></i>Back</a>
+</div>
+<div class="ctc-card mb-3">
+    <div class="ctc-card-body py-3">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label fw-semibold small">From Date</label>
+                <input type="date" name="from_date" value="{{ from_date }}" class="form-control form-control-sm">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-semibold small">To Date</label>
+                <input type="date" name="to_date" value="{{ to_date }}" class="form-control form-control-sm">
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn-ctc w-100"><i class="fa fa-filter me-1"></i>Filter</button>
+            </div>
+        </form>
+    </div>
+</div>
+<div class="row g-3 mb-3">
+    <div class="col-md-4">
+        <div class="stat-card" style="background:linear-gradient(135deg,#e65100,#f57c00)">
+            <div class="number">Rs.{{ total.total_amount|default:0 }}</div>
+            <div class="label">Total Purchase</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card" style="background:linear-gradient(135deg,#2e7d32,#388e3c)">
+            <div class="number">Rs.{{ total.total_paid|default:0 }}</div>
+            <div class="label">Total Paid</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card" style="background:linear-gradient(135deg,#1565c0,#1976d2)">
+            <div class="number">{{ bills.count }}</div>
+            <div class="label">Total Bills</div>
+        </div>
+    </div>
+</div>
+<div class="ctc-card">
+    <div class="ctc-card-header"><span><i class="fa fa-list me-2"></i>Purchase Bills</span></div>
+    <div class="ctc-card-body p-0">
+        <table class="table table-hover mb-0 ctc-datatable">
+            <thead><tr><th>#</th><th>Bill No</th><th>Vendor</th><th>Date</th><th>Total</th><th>Paid</th><th>Balance</th><th>Status</th></tr></thead>
+            <tbody>
+            {% for bill in bills %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td>{{ bill.bill_number }}</td>
+                <td>{{ bill.vendor.name }}</td>
+                <td>{{ bill.bill_date }}</td>
+                <td>Rs.{{ bill.total_amount }}</td>
+                <td>Rs.{{ bill.paid_amount }}</td>
+                <td>Rs.{{ bill.balance_due }}</td>
+                <td>
+                    {% if bill.status == 'paid' %}<span class="badge-success">Paid</span>
+                    {% elif bill.status == 'partial' %}<span class="badge-warning">Partial</span>
+                    {% else %}<span class="badge-danger">Pending</span>{% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="8" class="text-center text-muted py-4">No records found</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

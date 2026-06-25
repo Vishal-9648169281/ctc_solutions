@@ -1,0 +1,371 @@
+{% extends 'base.html' %}
+{% block title %}New GST Invoice{% endblock %}
+{% block extra_css %}
+<style>
+.items-table th{background:#1e3a8a;color:#fff;font-size:.72rem;padding:8px 6px;white-space:nowrap}
+.items-table td{padding:4px 4px;vertical-align:middle}
+.items-table input,.items-table select{font-size:.82rem;padding:3px 5px;height:28px;border-radius:4px;border:1.5px solid #e2e8f0}
+.items-table input:focus,.items-table select:focus{border-color:#3b82f6;outline:none;box-shadow:0 0 0 2px rgba(59,130,246,.15)}
+.totals-box td{padding:5px 12px;font-size:.85rem}
+.totals-box tr.grand td{background:#1e3a8a;color:#fff;font-weight:700}
+.quick-add-btn{font-size:.7rem;padding:2px 7px;border-radius:4px;border:1px solid #3b82f6;color:#3b82f6;background:#eff6ff;cursor:pointer;white-space:nowrap}
+.quick-add-btn:hover{background:#3b82f6;color:#fff}
+.item-desc-box{display:flex;gap:3px;align-items:center}
+.item-desc-box select{flex:1;min-width:0}
+.item-desc-box input.manual-desc{width:120px;font-size:.8rem;border:1.5px dashed #94a3b8;background:#fffbeb}
+</style>
+{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <h5><i class="fa fa-file-invoice me-2"></i>
+      {% if invoice_type == 'gst' %}New GST Invoice
+      {% elif invoice_type == 'proforma' %}New Proforma Invoice
+      {% else %}New Export Invoice{% endif %}
+    </h5>
+    <div class="page-breadcrumb">Sales &rsaquo; <span>New Invoice</span></div>
+  </div>
+  <a href="/sales/invoices/" class="btn-ctc-outline"><i class="fa fa-arrow-left me-1"></i>Back</a>
+</div>
+
+<form method="post" id="invoiceForm">
+  {% csrf_token %}
+  <input type="hidden" name="invoice_type" value="{{ invoice_type }}">
+
+  <!-- Bill Header -->
+  <div class="ctc-card mb-3">
+    <div class="ctc-card-header"><h6><i class="fa fa-circle-info"></i>Invoice Details</h6></div>
+    <div class="ctc-card-body">
+      <div class="row g-3">
+        <div class="col-md-2">
+          <label class="form-label-sm">Bill No.</label>
+          <input type="text" class="form-control form-control-sm" value="{{ invoice_number }}" readonly style="background:#f8fafc;font-weight:700;color:#1e40af">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label-sm">Date <span class="text-danger">*</span></label>
+          <input type="date" name="invoice_date" class="form-control form-control-sm" value="{{ today }}" required>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label-sm">Party (Customer) <span class="text-danger">*</span>
+            <button type="button" class="quick-add-btn ms-1" onclick="openQuickCustomer()"><i class="fa fa-plus"></i> New</button>
+          </label>
+          <select name="customer" id="customerSelect" class="form-select form-select-sm" required>
+            <option value="">-- Select Customer --</option>
+            {% for c in customers %}
+            <option value="{{ c.pk }}">{{ c.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label-sm">Due Date</label>
+          <input type="date" name="due_date" class="form-control form-control-sm">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label-sm">Reverse Charge?</label>
+          <select name="reverse_charge" class="form-select form-select-sm">
+            <option value="N">No</option>
+            <option value="Y">Yes</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GR / Supply Details -->
+  <div class="ctc-card mb-3">
+    <div class="ctc-card-header"><h6><i class="fa fa-truck"></i>G.R. &amp; Supply Details</h6></div>
+    <div class="ctc-card-body">
+      <div class="row g-3">
+        <div class="col-md-3">
+          <label class="form-label-sm">G.R. No.</label>
+          <input type="text" name="gr_number" class="form-control form-control-sm" placeholder="G.R. Number">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label-sm">G.R. Date</label>
+          <input type="date" name="gr_date" class="form-control form-control-sm">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label-sm">Date of Supply</label>
+          <input type="date" name="date_of_supply" class="form-control form-control-sm">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label-sm">Time of Supply</label>
+          <input type="time" name="time_of_supply" class="form-control form-control-sm">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label-sm">Place of Supply</label>
+          <input type="text" name="place_of_supply" class="form-control form-control-sm" placeholder="e.g. Chandigarh">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label-sm">Order No.</label>
+          <input type="text" name="order_number" class="form-control form-control-sm">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label-sm">Order Date</label>
+          <input type="date" name="order_date" class="form-control form-control-sm">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label-sm">Vehicle No.</label>
+          <input type="text" name="vehicle_number" class="form-control form-control-sm">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label-sm">Transport</label>
+          <input type="text" name="transport" class="form-control form-control-sm">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label-sm">Despatched To</label>
+          <input type="text" name="despatched_to" class="form-control form-control-sm">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Items -->
+  <div class="ctc-card mb-3">
+    <div class="ctc-card-header">
+      <h6><i class="fa fa-list-ul"></i>Particulars
+        <small class="text-muted fw-normal ms-2" style="font-size:.7rem">
+          <i class="fa fa-lightbulb text-warning"></i> Select from master OR type description manually (yellow box)
+        </small>
+      </h6>
+      <button type="button" class="btn-ctc" onclick="addRow()" style="padding:5px 14px;font-size:.8rem">
+        <i class="fa fa-plus me-1"></i>Add Item
+      </button>
+    </div>
+    <div class="table-responsive">
+      <table class="table items-table mb-0">
+        <thead>
+          <tr>
+            <th style="width:32%">Particulars <small style="font-weight:400;opacity:.8">(master or manual)</small></th>
+            <th style="width:9%">HSN No.</th>
+            <th style="width:6%">GST%</th>
+            <th style="width:6%">Qty</th>
+            <th style="width:6%">Unit</th>
+            <th style="width:10%">Rate</th>
+            <th style="width:10%">Amount</th>
+            <th style="width:5%"></th>
+          </tr>
+        </thead>
+        <tbody id="itemsBody">
+          <tr>
+            <td>
+              <div class="item-desc-box">
+                <select name="product[]" class="form-select form-select-sm" onchange="fillRate(this)" style="min-width:130px">
+                  <option value="">-- Master --</option>
+                  {% for p in products %}
+                  <option value="{{ p.pk }}" data-rate="{{ p.sale_price }}" data-tax="{{ p.tax_rate }}" data-hsn="{{ p.hsn_code|default:'' }}" data-unit="{{ p.unit.short_name|default:'' }}">{{ p.name }}</option>
+                  {% endfor %}
+                </select>
+                <input type="text" name="description[]" class="form-control form-control-sm manual-desc" placeholder="or type here..." title="Manual description (for services/software not in master)">
+              </div>
+            </td>
+            <td><input type="text" name="hsn_no[]" class="form-control form-control-sm hsn" style="width:80px" placeholder="HSN"></td>
+            <td><input type="number" name="tax_rate[]" class="form-control form-control-sm tax" value="18" onchange="calcRow(this)" style="width:55px"></td>
+            <td><input type="number" name="quantity[]" class="form-control form-control-sm qty" value="1" min="0.01" step="0.01" onchange="calcRow(this)" required style="width:58px"></td>
+            <td><input type="text" name="unit[]" class="form-control form-control-sm unit-fld" style="width:52px" placeholder="Pcs"></td>
+            <td><input type="number" name="rate[]" class="form-control form-control-sm rate" value="0" step="0.01" onchange="calcRow(this)" required style="width:82px"></td>
+            <td><input type="number" name="amount[]" class="form-control form-control-sm amount" value="0" readonly style="width:82px;background:#f8fafc;font-weight:600"></td>
+            <td><button type="button" class="btn-sm-icon btn-delete" onclick="removeRow(this)"><i class="fa fa-trash"></i></button></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Remarks + Totals -->
+  <div class="ctc-card mb-3">
+    <div class="ctc-card-body">
+      <div class="row g-4">
+        <div class="col-md-5">
+          <label class="form-label-sm">Remarks</label>
+          <textarea name="notes" class="form-control form-control-sm" rows="3" placeholder="Any additional remarks..."></textarea>
+        </div>
+        <div class="col-md-7">
+          <table class="table totals-box mb-0" style="border-radius:10px;overflow:hidden;border:1px solid #e2e8f0">
+            <tr style="background:#f8fafc"><td>Total Amount</td><td class="text-end fw-600" id="subtotal">0.00</td></tr>
+            <tr style="background:#f8fafc"><td>GST Amount</td><td class="text-end fw-600 text-success" id="taxTotal">0.00</td></tr>
+            <tr style="background:#f8fafc">
+              <td>Add/Less 1 &nbsp;<input type="text" name="add_less1_label" id="add_less1_label" class="form-control form-control-sm d-inline" placeholder="A=Add  L=Less" style="width:110px" oninput="applyAddLessSign(1)"></td>
+              <td class="text-end"><input type="number" name="add_less1" id="add_less1" class="form-control form-control-sm d-inline" value="0" step="0.01" style="width:110px" onchange="calcTotal()"></td>
+            </tr>
+            <tr style="background:#f8fafc">
+              <td>Add/Less 2 &nbsp;<input type="text" name="add_less2_label" id="add_less2_label" class="form-control form-control-sm d-inline" placeholder="A=Add  L=Less" style="width:110px" oninput="applyAddLessSign(2)"></td>
+              <td class="text-end"><input type="number" name="add_less2" id="add_less2" class="form-control form-control-sm d-inline" value="0" step="0.01" style="width:110px" onchange="calcTotal()"></td>
+            </tr>
+            <tr style="background:#f8fafc">
+              <td>Discount</td>
+              <td class="text-end"><input type="number" name="discount" id="discount" class="form-control form-control-sm d-inline" value="0" style="width:110px" onchange="calcTotal()"></td>
+            </tr>
+            <tr class="grand"><td><strong>NET AMOUNT</strong></td><td class="text-end fs-5"><strong id="grandTotal">0.00</strong></td></tr>
+            <tr style="background:#eff6ff"><td style="color:#1e40af">Net Rounded</td><td class="text-end fw-700" style="color:#1e40af" id="netRounded">0</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="d-flex gap-2 mb-4">
+    <button type="submit" class="btn-ctc"><i class="fa fa-save me-1"></i>Confirm</button>
+    <a href="/sales/invoices/" class="btn-ctc-outline">Exit</a>
+  </div>
+</form>
+
+<!-- Quick Add Customer Modal -->
+<div class="modal fade" id="quickCustomerModal" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content" style="border-radius:12px;overflow:hidden">
+      <div class="modal-header" style="background:linear-gradient(135deg,#1e40af,#1d4ed8);color:#fff;padding:12px 16px">
+        <h6 class="modal-title mb-0"><i class="fa fa-user-plus me-2"></i>Quick Add Customer</h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-3">
+        <div class="mb-2">
+          <label class="form-label-sm">Name <span class="text-danger">*</span></label>
+          <input type="text" id="qc_name" class="form-control form-control-sm" placeholder="Customer name" autofocus>
+        </div>
+        <div class="mb-2">
+          <label class="form-label-sm">Phone</label>
+          <input type="text" id="qc_phone" class="form-control form-control-sm" placeholder="Mobile number">
+        </div>
+        <div class="mb-2">
+          <label class="form-label-sm">GSTIN</label>
+          <input type="text" id="qc_gstin" class="form-control form-control-sm" placeholder="GST number">
+        </div>
+        <div class="mb-2">
+          <label class="form-label-sm">City</label>
+          <input type="text" id="qc_city" class="form-control form-control-sm" placeholder="City">
+        </div>
+        <div class="mb-2">
+          <label class="form-label-sm">State</label>
+          <input type="text" id="qc_state" class="form-control form-control-sm" placeholder="State">
+        </div>
+        <div id="qc_error" class="text-danger small d-none"></div>
+      </div>
+      <div class="modal-footer p-2">
+        <button type="button" class="btn-ctc w-100" onclick="saveQuickCustomer()"><i class="fa fa-save me-1"></i>Save &amp; Select</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ── Product options string for cloning rows ─────────────────
+const productOptions = `<option value="">-- Master --</option>{% for p in products %}<option value="{{ p.pk }}" data-rate="{{ p.sale_price }}" data-tax="{{ p.tax_rate }}" data-hsn="{{ p.hsn_code|default:'' }}" data-unit="{{ p.unit.short_name|default:'' }}">{{ p.name }}</option>{% endfor %}`;
+
+function addRow() {
+    const tbody = document.getElementById('itemsBody');
+    tbody.insertAdjacentHTML('beforeend', `<tr>
+        <td>
+          <div class="item-desc-box">
+            <select name="product[]" class="form-select form-select-sm" onchange="fillRate(this)" style="min-width:130px">${productOptions}</select>
+            <input type="text" name="description[]" class="form-control form-control-sm manual-desc" placeholder="or type here..." title="Manual description">
+          </div>
+        </td>
+        <td><input type="text" name="hsn_no[]" class="form-control form-control-sm hsn" style="width:80px" placeholder="HSN"></td>
+        <td><input type="number" name="tax_rate[]" class="form-control form-control-sm tax" value="18" onchange="calcRow(this)" style="width:55px"></td>
+        <td><input type="number" name="quantity[]" class="form-control form-control-sm qty" value="1" min="0.01" step="0.01" onchange="calcRow(this)" required style="width:58px"></td>
+        <td><input type="text" name="unit[]" class="form-control form-control-sm unit-fld" style="width:52px" placeholder="Pcs"></td>
+        <td><input type="number" name="rate[]" class="form-control form-control-sm rate" value="0" step="0.01" onchange="calcRow(this)" required style="width:82px"></td>
+        <td><input type="number" name="amount[]" class="form-control form-control-sm amount" value="0" readonly style="width:82px;background:#f8fafc;font-weight:600"></td>
+        <td><button type="button" class="btn-sm-icon btn-delete" onclick="removeRow(this)"><i class="fa fa-trash"></i></button></td>
+    </tr>`);
+}
+
+function removeRow(btn) { btn.closest('tr').remove(); calcTotal(); }
+
+function fillRate(sel) {
+    const opt = sel.options[sel.selectedIndex];
+    const row = sel.closest('tr');
+    if (!opt.value) return;
+    row.querySelector('.rate').value = opt.dataset.rate || 0;
+    row.querySelector('.tax').value  = opt.dataset.tax  || 18;
+    row.querySelector('.hsn').value  = opt.dataset.hsn  || '';
+    row.querySelector('.unit-fld').value = opt.dataset.unit || '';
+    // Clear manual desc when master selected
+    const manualEl = row.querySelector('.manual-desc');
+    if (manualEl) manualEl.value = '';
+    calcRow(sel);
+}
+
+function calcRow(el) {
+    const row = el.closest('tr');
+    const qty  = parseFloat(row.querySelector('.qty').value)  || 0;
+    const rate = parseFloat(row.querySelector('.rate').value) || 0;
+    row.querySelector('.amount').value = (qty * rate).toFixed(2);
+    calcTotal();
+}
+
+function applyAddLessSign(n) {
+    const label = document.getElementById('add_less' + n + '_label').value.trim().toUpperCase();
+    const inp   = document.getElementById('add_less' + n);
+    const val   = Math.abs(parseFloat(inp.value) || 0);
+    if (label.startsWith('L')) {
+        inp.value = -val;
+        inp.style.color = '#dc2626';
+    } else {
+        inp.value = val;
+        inp.style.color = '#16a34a';
+    }
+    calcTotal();
+}
+
+function calcTotal() {
+    let subtotal = 0, tax = 0;
+    document.querySelectorAll('#itemsBody tr').forEach(row => {
+        const qty     = parseFloat(row.querySelector('.qty').value)  || 0;
+        const rate    = parseFloat(row.querySelector('.rate').value) || 0;
+        const taxRate = parseFloat(row.querySelector('.tax').value)  || 0;
+        const amt = qty * rate;
+        subtotal += amt;
+        tax += amt * taxRate / 100;
+    });
+    const discount  = parseFloat(document.getElementById('discount').value)  || 0;
+    const addLess1  = parseFloat(document.getElementById('add_less1').value) || 0;
+    const addLess2  = parseFloat(document.getElementById('add_less2').value) || 0;
+    const net = subtotal + tax + addLess1 + addLess2 - discount;
+    document.getElementById('subtotal').textContent  = subtotal.toFixed(2);
+    document.getElementById('taxTotal').textContent  = tax.toFixed(2);
+    document.getElementById('grandTotal').textContent = net.toFixed(2);
+    document.getElementById('netRounded').textContent = Math.round(net);
+}
+
+// ── Quick Add Customer ───────────────────────────────────────
+const _qcModal = new bootstrap.Modal(document.getElementById('quickCustomerModal'));
+function openQuickCustomer() {
+    document.getElementById('qc_name').value  = '';
+    document.getElementById('qc_phone').value = '';
+    document.getElementById('qc_gstin').value = '';
+    document.getElementById('qc_city').value  = '';
+    document.getElementById('qc_state').value = '';
+    document.getElementById('qc_error').classList.add('d-none');
+    _qcModal.show();
+    setTimeout(() => document.getElementById('qc_name').focus(), 400);
+}
+function saveQuickCustomer() {
+    const name = document.getElementById('qc_name').value.trim();
+    if (!name) { document.getElementById('qc_error').textContent='Name is required'; document.getElementById('qc_error').classList.remove('d-none'); return; }
+    const fd = new FormData();
+    fd.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+    fd.append('name',  name);
+    fd.append('phone', document.getElementById('qc_phone').value);
+    fd.append('gstin', document.getElementById('qc_gstin').value);
+    fd.append('city',  document.getElementById('qc_city').value);
+    fd.append('state', document.getElementById('qc_state').value);
+    fetch('/masters/quick-add/customer/', {method:'POST', body:fd})
+    .then(r=>r.json()).then(data=>{
+        if (!data.ok) { document.getElementById('qc_error').textContent=data.error; document.getElementById('qc_error').classList.remove('d-none'); return; }
+        const sel = document.getElementById('customerSelect');
+        const opt = new Option(data.name, data.pk, true, true);
+        sel.add(opt);
+        sel.value = data.pk;
+        _qcModal.hide();
+    }).catch(()=>{ document.getElementById('qc_error').textContent='Server error'; document.getElementById('qc_error').classList.remove('d-none'); });
+}
+// Enter key in modal
+document.getElementById('quickCustomerModal').addEventListener('keydown', e => { if(e.key==='Enter') saveQuickCustomer(); });
+</script>
+{% endblock %}

@@ -1,0 +1,96 @@
+{% extends 'base.html' %}
+{% block title %}Payment Report{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h5><i class="fa fa-coins me-2"></i>Payment Report</h5>
+        <div class="page-breadcrumb">Reports &rsaquo; Payments</div>
+    </div>
+    <a href="/reports/" class="btn-ctc-outline"><i class="fa fa-arrow-left me-1"></i>Back</a>
+</div>
+<div class="ctc-card mb-3">
+    <div class="ctc-card-body py-3">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label fw-semibold small">From Date</label>
+                <input type="date" name="from_date" value="{{ from_date }}" class="form-control form-control-sm">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-semibold small">To Date</label>
+                <input type="date" name="to_date" value="{{ to_date }}" class="form-control form-control-sm">
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn-ctc w-100"><i class="fa fa-filter me-1"></i>Filter</button>
+            </div>
+        </form>
+    </div>
+</div>
+<div class="row g-3 mb-3">
+    <div class="col-md-4">
+        <div class="stat-card" style="background:linear-gradient(135deg,#2e7d32,#388e3c)">
+            <div class="number">Rs.{{ total_received }}</div>
+            <div class="label">Total Received</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card" style="background:linear-gradient(135deg,#e65100,#f57c00)">
+            <div class="number">Rs.{{ total_paid }}</div>
+            <div class="label">Total Paid</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card" style="background:linear-gradient(135deg,#1565c0,#1976d2)">
+            <div class="number">Rs.{{ net }}</div>
+            <div class="label">Net Balance</div>
+        </div>
+    </div>
+</div>
+<div class="row g-3">
+    <div class="col-md-6">
+        <div class="ctc-card">
+            <div class="ctc-card-header"><span><i class="fa fa-arrow-down me-2 text-success"></i>Received from Customers</span></div>
+            <div class="ctc-card-body p-0">
+                <table class="table table-sm mb-0">
+                    <thead><tr><th>Receipt No</th><th>Customer</th><th>Date</th><th>Amount</th><th>Mode</th></tr></thead>
+                    <tbody>
+                    {% for p in received %}
+                    <tr>
+                        <td>{{ p.receipt_number }}</td>
+                        <td>{{ p.customer.name }}</td>
+                        <td>{{ p.payment_date }}</td>
+                        <td>Rs.{{ p.amount }}</td>
+                        <td>{{ p.get_payment_mode_display }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5" class="text-center text-muted py-3">No records</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="ctc-card">
+            <div class="ctc-card-header"><span><i class="fa fa-arrow-up me-2 text-danger"></i>Paid to Vendors</span></div>
+            <div class="ctc-card-body p-0">
+                <table class="table table-sm mb-0">
+                    <thead><tr><th>Voucher No</th><th>Vendor</th><th>Date</th><th>Amount</th><th>Mode</th></tr></thead>
+                    <tbody>
+                    {% for p in paid %}
+                    <tr>
+                        <td>{{ p.voucher_number }}</td>
+                        <td>{{ p.vendor.name }}</td>
+                        <td>{{ p.payment_date }}</td>
+                        <td>Rs.{{ p.amount }}</td>
+                        <td>{{ p.get_payment_mode_display }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5" class="text-center text-muted py-3">No records</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+
+<div class="page-header">
+    <h5><i class="fa fa-phone-square me-2"></i>{{ title }}</h5>
+    <a href="/service/" class="btn btn-ctc-outline btn-sm"><i class="fa fa-arrow-left me-1"></i>Back</a>
+</div>
+
+<form method="post">
+    {% csrf_token %}
+
+    <div class="ctc-card mb-3">
+        <div class="ctc-card-header">
+            <i class="fa fa-info-circle me-2"></i>Call Information
+        </div>
+        <div class="ctc-card-body">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label-sm">Call Number</label>
+                    <input type="text" class="form-control form-control-sm" value="{{ obj.call_number|default:call_number }}" readonly>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label-sm">Call Date <span class="text-danger">*</span></label>
+                    <input type="date" name="call_date" value="{{ obj.call_date|default:today }}" class="form-control form-control-sm" required>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label-sm">Customer <span class="text-danger">*</span></label>
+                    <select name="customer" class="form-select form-select-sm" required>
+                        <option value="">-- Select --</option>
+                        {% for c in customers %}
+                        <option value="{{ c.pk }}" {% if obj.customer_id == c.pk %}selected{% endif %}>{{ c.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label-sm">Priority</label>
+                    <select name="priority" class="form-select form-select-sm">
+                        <option value="low" {% if obj.priority == 'low' %}selected{% endif %}>Low</option>
+                        <option value="medium" {% if obj.priority == 'medium' or not obj %}selected{% endif %}>Medium</option>
+                        <option value="high" {% if obj.priority == 'high' %}selected{% endif %}>High</option>
+                        <option value="urgent" {% if obj.priority == 'urgent' %}selected{% endif %}>Urgent</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="ctc-card mb-3">
+        <div class="ctc-card-header">
+            <i class="fa fa-address-book me-2"></i>Contact & Issue Details
+        </div>
+        <div class="ctc-card-body">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label-sm">Contact Person</label>
+                    <input type="text" name="contact_person" value="{{ obj.contact_person|default:'' }}" class="form-control form-control-sm">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label-sm">Contact Phone</label>
+                    <input type="text" name="contact_phone" value="{{ obj.contact_phone|default:'' }}" class="form-control form-control-sm">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label-sm">Issue Type <span class="text-danger">*</span></label>
+                    <input type="text" name="issue_type" value="{{ obj.issue_type|default:'' }}" class="form-control form-control-sm" required placeholder="e.g. Hardware, Software">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label-sm">Assigned To</label>
+                    <input type="text" name="assigned_to" value="{{ obj.assigned_to|default:'' }}" class="form-control form-control-sm">
+                </div>
+                <div class="col-md-12">
+                    <label class="form-label-sm">Description <span class="text-danger">*</span></label>
+                    <textarea name="description" class="form-control form-control-sm" rows="3" required>{{ obj.description|default:'' }}</textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if obj %}
+    <div class="ctc-card mb-3">
+        <div class="ctc-card-header">
+            <i class="fa fa-wrench me-2"></i>Resolution Details
+        </div>
+        <div class="ctc-card-body">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label-sm">Status</label>
+                    <select name="status" class="form-select form-select-sm">
+                        <option value="open" {% if obj.status == 'open' %}selected{% endif %}>Open</option>
+                        <option value="inprogress" {% if obj.status == 'inprogress' %}selected{% endif %}>In Progress</option>
+                        <option value="resolved" {% if obj.status == 'resolved' %}selected{% endif %}>Resolved</option>
+                        <option value="closed" {% if obj.status == 'closed' %}selected{% endif %}>Closed</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label-sm">Charges (Rs.)</label>
+                    <input type="number" name="charges" value="{{ obj.charges|default:'0' }}" class="form-control form-control-sm" step="0.01">
+                </div>
+                <div class="col-md-12">
+                    <label class="form-label-sm">Resolution</label>
+                    <textarea name="resolution" class="form-control form-control-sm" rows="3">{{ obj.resolution|default:'' }}</textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="d-flex gap-2 mb-4">
+        <button type="submit" class="btn btn-ctc btn-sm"><i class="fa fa-save me-1"></i>Save</button>
+        <a href="/service/" class="btn btn-ctc-outline btn-sm"><i class="fa fa-times me-1"></i>Cancel</a>
+    </div>
+</form>
+
+{% endblock %}

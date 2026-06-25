@@ -1,0 +1,340 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Export Invoice{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h5><i class="fa fa-globe me-2"></i>Export Invoice</h5>
+        <div class="page-breadcrumb">Sales &rsaquo; Export Invoice</div>
+    </div>
+    <div class="d-flex gap-2">
+        <button class="btn-ctc" onclick="saveInvoice()"><i class="fa fa-save me-1"></i>Save</button>
+        <button class="btn-ctc-outline" onclick="printInvoice()"><i class="fa fa-print me-1"></i>Print</button>
+        <button class="btn-ctc-outline" onclick="newInvoice()"><i class="fa fa-file me-1"></i>New</button>
+        <a href="{% url 'sales:export_list' %}" class="btn-ctc-outline"><i class="fa fa-list me-1"></i>List</a>
+        <button class="btn-ctc-outline" onclick="fetchRates()"><i class="fa fa-sync me-1"></i>Live Rates</button>
+        <a href="{% url 'dashboard' %}" class="btn-ctc-outline"><i class="fa fa-times me-1"></i>Exit</a>
+    </div>
+</div>
+
+<form method="post" id="expForm" action="{% url 'sales:invoice_add' %}">
+    {% csrf_token %}
+    <input type="hidden" name="invoice_type" value="export">
+    <input type="hidden" name="usd_rate" id="h_usd_rate" value="0">
+    <input type="hidden" name="cad_rate" id="h_cad_rate" value="0">
+    <input type="hidden" name="total_inr" id="h_total_inr" value="0">
+    <input type="hidden" name="total_usd" id="h_total_usd" value="0">
+    <input type="hidden" name="total_cad" id="h_total_cad" value="0">
+    <input type="hidden" name="subtotal" id="h_subtotal" value="0">
+    <input type="hidden" name="total_amount" id="h_total_amount" value="0">
+    <input type="hidden" name="items_json" id="h_items" value="[]">
+
+    <!-- Invoice Header -->
+    <div class="ctc-card mb-3">
+        <div class="ctc-card-header"><span><i class="fa fa-info-circle me-2"></i>Invoice Details</span></div>
+        <div class="ctc-card-body">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold small">Invoice No</label>
+                    <input type="text" name="invoice_number" id="inv_no" class="form-control" value="{{ next_invoice_no }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold small">Date</label>
+                    <input type="date" name="invoice_date" id="inv_date" class="form-control">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold small">Currency</label>
+                    <select name="currency" id="inv_curr" class="form-select" onchange="currencyChanged()">
+                        <option value="INR">INR &#8377;</option>
+                        <option value="USD">USD $</option>
+                        <option value="CAD">CAD $</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold small">Status</label>
+                    <select name="status" class="form-select">
+                        <option value="pending">Pending</option>
+                        <option value="paid">Paid</option>
+                        <option value="partial">Partial</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold small">Party Name</label>
+                    <select name="customer" id="inv_party" class="form-select" onchange="partyChanged()">
+                        <option value="">--SELECT--</option>
+                        {% for c in customers %}<option value="{{ c.pk }}" data-addr="{{ c.address }}" data-city="{{ c.city }}">{{ c.name }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold small">Address</label>
+                    <input type="text" id="inv_addr" class="form-control" readonly>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold small">City</label>
+                    <input type="text" id="inv_city" class="form-control" readonly>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold small">Port of Loading</label>
+                    <input type="text" name="port_of_loading" class="form-control" placeholder="e.g. NHAVA SHEVA">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold small">Port of Discharge</label>
+                    <input type="text" name="port_of_discharge" class="form-control" placeholder="e.g. VANCOUVER">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold small">Country of Destination</label>
+                    <input type="text" name="country_of_destination" class="form-control" placeholder="e.g. CANADA">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold small">Shipping Bill No</label>
+                    <input type="text" name="shipping_bill_no" class="form-control">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold small">LUT Number</label>
+                    <input type="text" name="lut_number" class="form-control">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold small">Due Date</label>
+                    <input type="date" name="due_date" class="form-control">
+                </div>
+                <div class="col-12">
+                    <label class="form-label fw-semibold small">Notes</label>
+                    <input type="text" name="notes" class="form-control">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Currency Conversion -->
+    <div class="ctc-card mb-3">
+        <div class="ctc-card-header"><span><i class="fa fa-exchange-alt me-2"></i>Currency Conversion</span></div>
+        <div class="ctc-card-body">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold small">1 USD = &#8377; INR</label>
+                    <div class="input-group">
+                        <input type="number" id="usd_inr" class="form-control" value="83.50" step="0.01" oninput="recalcAll()">
+                        <span class="input-group-text" id="usd_lbl">&#8377; 83.50</span>
+                    </div>
+                    <small class="text-muted" id="usd_status">Manual rate</small>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold small">1 CAD = &#8377; INR</label>
+                    <div class="input-group">
+                        <input type="number" id="cad_inr" class="form-control" value="61.20" step="0.01" oninput="recalcAll()">
+                        <span class="input-group-text" id="cad_lbl">&#8377; 61.20</span>
+                    </div>
+                    <small class="text-muted" id="cad_status">Manual rate</small>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold small">1 CAD = $ USD</label>
+                    <div class="input-group">
+                        <input type="number" id="cad_usd" class="form-control" value="0.74" step="0.001" readonly>
+                        <span class="input-group-text" id="cadusd_lbl">$ 0.74</span>
+                    </div>
+                    <small class="text-muted">Auto calculated</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Item Grid -->
+    <div class="ctc-card mb-3">
+        <div class="ctc-card-header"><span><i class="fa fa-boxes me-2"></i>Items</span></div>
+        <div class="ctc-card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-bordered mb-0" id="itemTable">
+                    <thead class="table-primary">
+                        <tr>
+                            <th>#</th><th>Item Description</th><th>HSN</th><th>Unit</th>
+                            <th class="text-end">Qty</th><th class="text-end">Rate (INR)</th>
+                            <th class="text-end">Rate (USD)</th><th class="text-end">Rate (CAD)</th>
+                            <th class="text-end">Amt (INR)</th><th class="text-end">Amt (USD)</th>
+                            <th class="text-end">Amt (CAD)</th><th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="itemBody"></tbody>
+                </table>
+            </div>
+            <div class="p-3 d-flex gap-2">
+                <button type="button" class="btn-ctc" onclick="addRow()"><i class="fa fa-plus me-1"></i>Add Item</button>
+                <button type="button" class="btn-ctc-outline" onclick="addBlankRows(5)">+ 5 Rows</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Totals -->
+    <div class="row g-3 mb-3">
+        <div class="col-md-4">
+            <div class="ctc-card">
+                <div class="ctc-card-header"><span>Amount in &#8377; INR</span></div>
+                <div class="ctc-card-body">
+                    <div class="d-flex justify-content-between mb-2"><span>Subtotal</span><strong id="t_inr_sub">&#8377; 0.00</strong></div>
+                    <div class="d-flex justify-content-between mb-2 align-items-center">
+                        <span>Discount</span>
+                        <input type="number" name="discount" id="f_disc" value="0" step="0.01" class="form-control form-control-sm" style="max-width:100px;" oninput="recalcTotals()">
+                    </div>
+                    <hr>
+                    <div class="d-flex justify-content-between"><strong>Total INR</strong><strong id="t_inr_total">&#8377; 0.00</strong></div>
+                    <small class="text-muted fst-italic" id="inr_words">Zero Rupees Only</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="ctc-card">
+                <div class="ctc-card-header"><span>Amount in $ USD</span></div>
+                <div class="ctc-card-body">
+                    <div class="d-flex justify-content-between mb-2"><span>Subtotal</span><strong id="t_usd_sub">$ 0.00</strong></div>
+                    <div class="d-flex justify-content-between mb-2"><span>Exchange Rate</span><span id="t_usd_rate">&#8377; 83.50 / $</span></div>
+                    <hr>
+                    <div class="d-flex justify-content-between"><strong>Total USD</strong><strong id="t_usd_total">$ 0.00</strong></div>
+                    <small class="text-muted fst-italic" id="usd_words">Zero Dollars Only</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="ctc-card">
+                <div class="ctc-card-header"><span>Amount in $ CAD</span></div>
+                <div class="ctc-card-body">
+                    <div class="d-flex justify-content-between mb-2"><span>Subtotal</span><strong id="t_cad_sub">C$ 0.00</strong></div>
+                    <div class="d-flex justify-content-between mb-2"><span>Exchange Rate</span><span id="t_cad_rate">&#8377; 61.20 / C$</span></div>
+                    <hr>
+                    <div class="d-flex justify-content-between"><strong>Total CAD</strong><strong id="t_cad_total">C$ 0.00</strong></div>
+                    <small class="text-muted fst-italic" id="cad_words">Zero Canadian Dollars Only</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+{% endblock %}
+{% block extra_js %}
+<script>
+const products = [
+  {% for p in products %}
+  {pk:'{{ p.pk }}', name:'{{ p.name|escapejs }}', hsn:'{{ p.hsn_code|escapejs }}', unit:'{{ p.unit.short_name|default:''|escapejs }}', rate:{{ p.sale_price }}, gst:{{ p.tax_rate }}},
+  {% endfor %}
+];
+let rowCount = 0;
+document.getElementById('inv_date').valueAsDate = new Date();
+
+function partyChanged(){
+    const sel=document.getElementById('inv_party'),opt=sel.options[sel.selectedIndex];
+    document.getElementById('inv_addr').value=opt.dataset.addr||'';
+    document.getElementById('inv_city').value=opt.dataset.city||'';
+}
+function addRow(){
+    rowCount++;
+    const tb=document.getElementById('itemBody'),tr=document.createElement('tr');
+    tr.id='row_'+rowCount;
+    tr.innerHTML=`
+        <td class="text-center text-muted">${rowCount}</td>
+        <td><select onchange="productSelected(this,${rowCount})" class="form-select form-select-sm">
+            <option value="">--SELECT--</option>
+            ${products.map(p=>`<option value="${p.pk}" data-rate="${p.rate}" data-hsn="${p.hsn}" data-unit="${p.unit}" data-gst="${p.gst}">${p.name}</option>`).join('')}
+        </select></td>
+        <td><input type="text" id="hsn_${rowCount}" class="form-control form-control-sm" readonly></td>
+        <td><input type="text" id="unit_${rowCount}" class="form-control form-control-sm" readonly></td>
+        <td><input type="number" id="qty_${rowCount}" value="1" min="0" step="0.01" class="form-control form-control-sm text-end" oninput="calcRow(${rowCount})"></td>
+        <td><input type="number" id="rate_inr_${rowCount}" value="0.00" step="0.01" class="form-control form-control-sm text-end" oninput="rateChanged(${rowCount},'inr')"></td>
+        <td><input type="number" id="rate_usd_${rowCount}" value="0.00" step="0.0001" class="form-control form-control-sm text-end" oninput="rateChanged(${rowCount},'usd')"></td>
+        <td><input type="number" id="rate_cad_${rowCount}" value="0.00" step="0.0001" class="form-control form-control-sm text-end" oninput="rateChanged(${rowCount},'cad')"></td>
+        <td class="text-end fw-semibold text-primary" id="amt_inr_${rowCount}">0.00</td>
+        <td class="text-end fw-semibold text-primary" id="amt_usd_${rowCount}">0.00</td>
+        <td class="text-end fw-semibold text-primary" id="amt_cad_${rowCount}">0.00</td>
+        <td class="text-center"><button type="button" onclick="delRow(${rowCount})" class="btn-sm-icon btn-delete"><i class="fa fa-times"></i></button></td>`;
+    tb.appendChild(tr);
+}
+function addBlankRows(n){for(let i=0;i<n;i++)addRow();}
+function productSelected(sel,rid){
+    const opt=sel.options[sel.selectedIndex];if(!opt.value)return;
+    const rate=parseFloat(opt.dataset.rate)||0,usdR=parseFloat(document.getElementById('usd_inr').value)||83.50,cadR=parseFloat(document.getElementById('cad_inr').value)||61.20;
+    document.getElementById('hsn_'+rid).value=opt.dataset.hsn||'';document.getElementById('unit_'+rid).value=opt.dataset.unit||'';
+    document.getElementById('rate_inr_'+rid).value=rate.toFixed(2);
+    document.getElementById('rate_usd_'+rid).value=usdR>0?(rate/usdR).toFixed(4):0;
+    document.getElementById('rate_cad_'+rid).value=cadR>0?(rate/cadR).toFixed(4):0;
+    calcRow(rid);
+}
+function rateChanged(rid,currency){
+    const usdR=parseFloat(document.getElementById('usd_inr').value)||83.50,cadR=parseFloat(document.getElementById('cad_inr').value)||61.20;
+    const inrEl=document.getElementById('rate_inr_'+rid),usdEl=document.getElementById('rate_usd_'+rid),cadEl=document.getElementById('rate_cad_'+rid);
+    if(currency==='inr'){const v=parseFloat(inrEl.value)||0;usdEl.value=usdR>0?(v/usdR).toFixed(4):0;cadEl.value=cadR>0?(v/cadR).toFixed(4):0;}
+    else if(currency==='usd'){const v=parseFloat(usdEl.value)||0;inrEl.value=(v*usdR).toFixed(2);cadEl.value=usdR>0&&cadR>0?(v*usdR/cadR).toFixed(4):0;}
+    else{const v=parseFloat(cadEl.value)||0;inrEl.value=(v*cadR).toFixed(2);usdEl.value=usdR>0?(v*cadR/usdR).toFixed(4):0;}
+    calcRow(rid);
+}
+function calcRow(rid){
+    const qty=parseFloat(document.getElementById('qty_'+rid).value)||0;
+    const rInr=parseFloat(document.getElementById('rate_inr_'+rid).value)||0;
+    const rUsd=parseFloat(document.getElementById('rate_usd_'+rid).value)||0;
+    const rCad=parseFloat(document.getElementById('rate_cad_'+rid).value)||0;
+    document.getElementById('amt_inr_'+rid).textContent=(qty*rInr).toFixed(2);
+    document.getElementById('amt_usd_'+rid).textContent=(qty*rUsd).toFixed(2);
+    document.getElementById('amt_cad_'+rid).textContent=(qty*rCad).toFixed(2);
+    recalcTotals();
+}
+function delRow(rid){const tr=document.getElementById('row_'+rid);if(tr)tr.remove();recalcTotals();}
+function recalcAll(){
+    const usdR=parseFloat(document.getElementById('usd_inr').value)||83.50,cadR=parseFloat(document.getElementById('cad_inr').value)||61.20;
+    document.getElementById('usd_lbl').textContent='&#8377; '+usdR.toFixed(2);
+    document.getElementById('cad_lbl').textContent='&#8377; '+cadR.toFixed(2);
+    document.getElementById('cad_usd').value=usdR>0?(cadR/usdR).toFixed(4):0;
+    document.getElementById('cadusd_lbl').textContent='$ '+(usdR>0?(cadR/usdR).toFixed(4):0);
+    for(let i=1;i<=rowCount;i++){const el=document.getElementById('rate_inr_'+i);if(el)rateChanged(i,'inr');}
+    recalcTotals();
+}
+function recalcTotals(){
+    let subInr=0,subUsd=0,subCad=0;
+    for(let i=1;i<=rowCount;i++){
+        const ai=document.getElementById('amt_inr_'+i),au=document.getElementById('amt_usd_'+i),ac=document.getElementById('amt_cad_'+i);
+        if(ai)subInr+=parseFloat(ai.textContent)||0;if(au)subUsd+=parseFloat(au.textContent)||0;if(ac)subCad+=parseFloat(ac.textContent)||0;
+    }
+    const disc=parseFloat(document.getElementById('f_disc').value)||0;
+    const usdR=parseFloat(document.getElementById('usd_inr').value)||83.50,cadR=parseFloat(document.getElementById('cad_inr').value)||61.20;
+    const totInr=subInr-disc,totUsd=subUsd-(usdR>0?disc/usdR:0),totCad=subCad-(cadR>0?disc/cadR:0);
+    document.getElementById('t_inr_sub').textContent='&#8377; '+subInr.toFixed(2);
+    document.getElementById('t_inr_total').textContent='&#8377; '+totInr.toFixed(2);
+    document.getElementById('t_usd_sub').textContent='$ '+subUsd.toFixed(2);
+    document.getElementById('t_usd_total').textContent='$ '+totUsd.toFixed(2);
+    document.getElementById('t_cad_sub').textContent='C$ '+subCad.toFixed(2);
+    document.getElementById('t_cad_total').textContent='C$ '+totCad.toFixed(2);
+    document.getElementById('t_usd_rate').textContent='&#8377; '+usdR.toFixed(2)+' / $';
+    document.getElementById('t_cad_rate').textContent='&#8377; '+cadR.toFixed(2)+' / C$';
+    document.getElementById('h_usd_rate').value=usdR;document.getElementById('h_cad_rate').value=cadR;
+    document.getElementById('h_subtotal').value=subInr.toFixed(2);document.getElementById('h_total_inr').value=totInr.toFixed(2);
+    document.getElementById('h_total_usd').value=totUsd.toFixed(2);document.getElementById('h_total_cad').value=totCad.toFixed(2);
+    document.getElementById('h_total_amount').value=totInr.toFixed(2);
+}
+async function fetchRates(){
+    try{
+        const res=await fetch('https://api.exchangerate-api.com/v4/latest/INR'),data=await res.json();
+        if(data.rates){
+            const usdRate=data.rates['USD']?1/data.rates['USD']:83.50,cadRate=data.rates['CAD']?1/data.rates['CAD']:61.20;
+            document.getElementById('usd_inr').value=usdRate.toFixed(4);document.getElementById('cad_inr').value=cadRate.toFixed(4);
+            document.getElementById('usd_status').textContent='Live rate fetched';document.getElementById('cad_status').textContent='Live rate fetched';
+            recalcAll();
+        }
+    }catch(e){console.log('Rate fetch failed');}
+}
+function collectItems(){
+    const items=[];
+    for(let i=1;i<=rowCount;i++){
+        const tr=document.getElementById('row_'+i);if(!tr)continue;
+        const sel=tr.querySelector('select');if(!sel||!sel.value)continue;
+        items.push({product:sel.value,quantity:document.getElementById('qty_'+i).value,rate:document.getElementById('rate_inr_'+i).value,rate_usd:document.getElementById('rate_usd_'+i).value,rate_cad:document.getElementById('rate_cad_'+i).value,amount:document.getElementById('amt_inr_'+i).textContent,amount_usd:document.getElementById('amt_usd_'+i).textContent,amount_cad:document.getElementById('amt_cad_'+i).textContent,tax_rate:0,tax_amount:0});
+    }
+    return items;
+}
+function saveInvoice(){
+    const items=collectItems();
+    if(!document.getElementById('inv_party').value){alert('Please select a party!');return;}
+    if(items.length===0){alert('Please add at least one item!');return;}
+    document.getElementById('h_items').value=JSON.stringify(items);
+    document.getElementById('expForm').submit();
+}
+function newInvoice(){if(confirm('Clear form for new invoice?'))location.reload();}
+function printInvoice(){window.print();}
+function currencyChanged(){const c=document.getElementById('inv_curr').value;console.log('Currency set to:'+c);}
+function numToWords(n){n=Math.floor(n);if(n===0)return'Zero';const a=['','One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten','Eleven','Twelve','Thirteen','Fourteen','Fifteen','Sixteen','Seventeen','Eighteen','Nineteen'];const b=['','','Twenty','Thirty','Forty','Fifty','Sixty','Seventy','Eighty','Ninety'];function words(n){if(n<20)return a[n];if(n<100)return b[Math.floor(n/10)]+(n%10?' '+a[n%10]:'');if(n<1000)return a[Math.floor(n/100)]+' Hundred'+(n%100?' '+words(n%100):'');if(n<100000)return words(Math.floor(n/1000))+' Thousand'+(n%1000?' '+words(n%1000):'');if(n<10000000)return words(Math.floor(n/100000))+' Lakh'+(n%100000?' '+words(n%100000):'');return words(Math.floor(n/10000000))+' Crore'+(n%10000000?' '+words(n%10000000):'');}return words(n);}
+window.addEventListener('load',function(){addBlankRows(5);fetchRates();});
+</script>
+{% endblock %}

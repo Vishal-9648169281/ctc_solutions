@@ -1,0 +1,531 @@
+{% extends 'base.html' %}
+{% block title %}{% if note_type == 'vendor' %}GST Debit Note{% else %}GST Credit Note{% endif %}{% endblock %}
+{% block extra_css %}
+<style>
+.cn-label{font-size:.68rem;font-weight:600;color:#475569;margin-bottom:2px;display:block}
+.cn-input{font-size:.82rem;padding:4px 7px;height:28px;border-radius:4px;border:1.5px solid #cbd5e1;width:100%}
+.cn-input:focus{border-color:#3b82f6;outline:none;box-shadow:0 0 0 2px rgba(59,130,246,.12)}
+.entry-row-box{background:#f0f9ff;border:1.5px solid #bae6fd;border-radius:8px;padding:8px 10px}
+.entry-row-box label{font-size:.67rem;font-weight:600;color:#0369a1;margin-bottom:2px;display:block}
+.entry-row-box input,.entry-row-box select{font-size:.8rem;padding:3px 6px;height:26px;border-radius:4px;border:1.5px solid #bae6fd;width:100%}
+.grid-table th{background:#1e3a8a;color:#fff;font-size:.7rem;padding:6px 8px;white-space:nowrap}
+.grid-table td{font-size:.8rem;padding:5px 8px;vertical-align:middle}
+.totals-box{border-radius:8px;overflow:hidden;border:1px solid #e2e8f0;font-size:.83rem}
+.totals-box td{padding:5px 14px}
+.totals-box tr.grand td{background:#1e3a8a;color:#fff;font-weight:700}
+.totals-box tr.net-row td{background:#eff6ff;color:#1e40af;font-weight:700}
+.gst-badge{display:inline-flex;align-items:center;gap:5px;padding:3px 12px;border-radius:6px;font-size:.78rem;font-weight:700;cursor:pointer;border:2px solid}
+</style>
+{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <h5><i class="fa fa-receipt me-2"></i>{% if note_type == 'vendor' %}GST Debit Note{% else %}GST Credit Note{% endif %}</h5>
+    <div class="page-breadcrumb">{% if note_type == 'vendor' %}Debit Note{% else %}Credit Note{% endif %} &rsaquo; <span>New Entry</span></div>
+  </div>
+  <a href="/credit-note/?type={{ note_type }}" class="btn-ctc-outline"><i class="fa fa-arrow-left me-1"></i>Back</a>
+</div>
+
+<form method="post" id="noteForm">
+  {% csrf_token %}
+  <input type="hidden" name="note_type" value="{{ note_type }}">
+  <input type="hidden" id="items_json" name="items_json">
+
+  {% if note_type == 'vendor' %}
+  <!-- ═══════════════ DEBIT NOTE LAYOUT ═══════════════ -->
+  <div class="ctc-card mb-2">
+    <div class="ctc-card-body py-2">
+      <div class="row g-2 align-items-end">
+        <div class="col-md-1">
+          <span class="cn-label">D.N. NO</span>
+          <input type="text" class="cn-input" value="{{ note_number }}" readonly style="background:#f0f4ff;font-weight:700;color:#1e40af">
+        </div>
+        <div class="col-md-2">
+          <span class="cn-label">D.N. DATE <span class="text-danger">*</span></span>
+          <input type="date" name="note_date" class="cn-input" value="{{ today|date:'Y-m-d' }}" required>
+        </div>
+        <div class="col-md-2">
+          <span class="cn-label">G.R.NO.</span>
+          <input type="text" name="gr_number" class="cn-input" placeholder="GR Number">
+        </div>
+        <div class="col-md-2">
+          <span class="cn-label">G.R.DATE</span>
+          <input type="date" name="gr_date" class="cn-input">
+        </div>
+        <div class="col-md-3">
+          <span class="cn-label">TRANSPORT</span>
+          <input type="text" name="transport" class="cn-input" placeholder="Transport name">
+        </div>
+      </div>
+      <div class="row g-2 align-items-end mt-1">
+        <div class="col-md-2">
+          <span class="cn-label">INVOICE NO</span>
+          <input type="text" name="invoice_number_text" class="cn-input" placeholder="Invoice No">
+        </div>
+        <div class="col-md-2">
+          <span class="cn-label">INVOICE DATE</span>
+          <input type="date" name="invoice_date_text" class="cn-input">
+        </div>
+        <div class="col-md-1" style="padding-top:18px">
+          <span class="cn-label">PARTY NAME <span class="text-danger">*</span></span>
+        </div>
+        <div class="col-md-4">
+          <select name="vendor" class="cn-input" required>
+            <option value="">-- Select Vendor --</option>
+            {% for v in vendors %}<option value="{{ v.pk }}">{{ v.name }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="col-md-3">
+          <span class="cn-label">(I) INTERSTATE / (W) WITHIN STATE</span>
+          <div class="d-flex gap-2 mt-1">
+            <label class="gst-badge" style="border-color:#1e40af;background:#eff6ff;color:#1e40af" id="dn_lbl_W">
+              <input type="radio" name="gst_type" value="W" checked onchange="hlGst('dn')" style="accent-color:#1e40af"> W
+            </label>
+            <label class="gst-badge" style="border-color:#dc2626;background:#fef2f2;color:#dc2626;opacity:.45" id="dn_lbl_I">
+              <input type="radio" name="gst_type" value="I" onchange="hlGst('dn')" style="accent-color:#dc2626"> I
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Debit Note Entry Row -->
+  <div class="ctc-card mb-2">
+    <div class="ctc-card-body py-2">
+      <div class="entry-row-box">
+        <div class="row g-2 align-items-end">
+          <div class="col-md-3">
+            <label>ITEM DESCRIPTION</label>
+            <input type="text" id="e_desc" class="cn-input" placeholder="Type item description...">
+          </div>
+          <div class="col-md-1">
+            <label>HS CODE</label>
+            <input type="text" id="e_hsn" class="cn-input">
+          </div>
+          <div class="col-md-1">
+            <label>UNIT</label>
+            <input type="text" id="e_unit" class="cn-input" placeholder="Pcs">
+          </div>
+          <div class="col-md-1">
+            <label>QTY</label>
+            <input type="number" id="e_qty" class="cn-input" value="0" step="0.001" onchange="calcDN()">
+          </div>
+          <div class="col-md-2">
+            <label>RATE</label>
+            <input type="number" id="e_rate" class="cn-input" value="0.0000" step="0.0001" onchange="calcDN()">
+          </div>
+          <div class="col-md-1">
+            <label>MRP</label>
+            <input type="number" id="e_mrp" class="cn-input" value="0" step="0.01">
+          </div>
+          <div class="col-md-1">
+            <label>DIS%</label>
+            <input type="number" id="e_dis" class="cn-input" value="0" step="0.01" onchange="calcDN()">
+          </div>
+          <div class="col-md-auto">
+            <label>&nbsp;</label>
+            <button type="button" class="btn-ctc" onclick="addDNItem()" style="height:26px;padding:0 16px;font-size:.78rem">OK</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Debit Note Grid -->
+  <div class="ctc-card mb-2">
+    <div class="table-responsive" style="min-height:120px">
+      <table class="table grid-table mb-0">
+        <thead>
+          <tr>
+            <th>#</th><th>CODE</th><th>ITEM DESCRIPTION</th><th>HSN CODE</th>
+            <th>QTY</th><th>RATE</th><th>MRP</th><th>DIS%</th><th>AMOUNT</th><th></th>
+          </tr>
+        </thead>
+        <tbody id="dnGridBody">
+          <tr><td colspan="10" class="text-center text-muted py-3" style="font-size:.82rem"><i class="fa fa-arrow-up me-1"></i>Add items using entry row above</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Debit Note Footer -->
+  <div class="ctc-card mb-3">
+    <div class="ctc-card-body py-2">
+      <div class="row g-3">
+        <div class="col-md-4">
+          <div class="d-flex align-items-center gap-2 mb-2">
+            <div style="font-size:.8rem;font-weight:600;color:#475569">TOTAL QTY:</div>
+            <div style="background:#1e3a8a;color:#fff;border-radius:5px;padding:3px 12px;font-size:.85rem;font-weight:700" id="dn_totalQty">0</div>
+          </div>
+          <span class="text-primary" style="font-size:.85rem;cursor:pointer;text-decoration:underline"><i class="fa fa-plus me-1"></i>ADD</span>
+          <div class="mt-2">
+            <label class="form-label-sm">Remarks</label>
+            <textarea name="notes" class="form-control form-control-sm" rows="2" placeholder="Additional remarks..."></textarea>
+          </div>
+        </div>
+        <div class="col-md-8">
+          <table class="table totals-box mb-0">
+            <tr style="background:#f8fafc"><td>TOTAL AMOUNT</td><td class="text-end fw-600" id="dn_totalAmt">0.00</td></tr>
+            <tr style="background:#f8fafc"><td>DIS AMOUNT</td><td class="text-end fw-600 text-danger" id="dn_disAmt">0.00</td></tr>
+            <tr style="background:#f8fafc"><td>GST AMOUNT</td><td class="text-end fw-600 text-success" id="dn_gstAmt">0.00</td></tr>
+            <tr style="background:#f8fafc">
+              <td>
+                GST % &nbsp;<input type="number" name="gst_pct" id="dn_gstPct" class="form-control form-control-sm d-inline" value="0" step="0.01" style="width:70px" onchange="calcDNTotals()">
+                &nbsp;&nbsp; FREIGHT
+              </td>
+              <td class="text-end"><input type="number" name="freight" id="dn_freight" class="form-control form-control-sm d-inline" value="0" step="0.01" style="width:100px" onchange="calcDNTotals()"></td>
+            </tr>
+            <tr style="background:#f8fafc"><td>GST ON FREIGHT</td><td class="text-end fw-600" id="dn_gstOnFreight">0.00</td></tr>
+            <tr class="grand"><td><strong>NET AMOUNT</strong></td><td class="text-end fs-5"><strong id="dn_netAmt">0.00</strong></td></tr>
+            <tr class="net-row"><td>NET ROUNDED</td><td class="text-end" id="dn_netRounded">0</td></tr>
+          </table>
+          <input type="hidden" name="freight_hidden" id="dn_freightHidden" value="0">
+          <input type="hidden" name="gst_on_freight_hidden" id="dn_gofHidden" value="0">
+          <input type="hidden" name="dis_amount_hidden" id="dn_disHidden" value="0">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% else %}
+  <!-- ═══════════════ CREDIT NOTE LAYOUT ═══════════════ -->
+  <div class="ctc-card mb-2">
+    <div class="ctc-card-body py-2">
+      <div class="row g-2 align-items-end">
+        <div class="col-md-1">
+          <span class="cn-label">CRE NOTE NO</span>
+          <input type="text" class="cn-input" value="{{ note_number }}" readonly style="background:#f0f4ff;font-weight:700;color:#1e40af">
+        </div>
+        <div class="col-md-2">
+          <span class="cn-label">DATE <span class="text-danger">*</span></span>
+          <input type="date" name="note_date" class="cn-input" value="{{ today|date:'Y-m-d' }}" required>
+        </div>
+        <div class="col-md-2">
+          <span class="cn-label">G.R.NO.</span>
+          <input type="text" name="gr_number" class="cn-input" placeholder="GR Number">
+        </div>
+        <div class="col-md-2">
+          <span class="cn-label">G.R.DATE</span>
+          <input type="date" name="gr_date" class="cn-input">
+        </div>
+        <div class="col-md-2">
+          <span class="cn-label">GST BILL NO</span>
+          <input type="text" name="gst_bill_number" class="cn-input">
+        </div>
+        <div class="col-md-2">
+          <span class="cn-label">BILL DATE</span>
+          <input type="date" name="gst_bill_date" class="cn-input">
+        </div>
+        <div class="col-md-1">
+          <span class="cn-label">SECTOR</span>
+          <input type="text" name="sector" class="cn-input">
+        </div>
+      </div>
+      <div class="row g-2 align-items-end mt-1">
+        <div class="col-md-1" style="padding-top:18px"><span class="cn-label">PARTY <span class="text-danger">*</span></span></div>
+        <div class="col-md-4">
+          <select name="customer" class="cn-input" required>
+            <option value="">-- Select Customer --</option>
+            {% for c in customers %}<option value="{{ c.pk }}">{{ c.name }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="col-md-3">
+          <span class="cn-label">AGAINST INVOICE</span>
+          <select name="invoice" class="cn-input">
+            <option value="">-- None --</option>
+            {% for inv in invoices %}<option value="{{ inv.pk }}">{{ inv.invoice_number }} ({{ inv.invoice_date }})</option>{% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2">
+          <span class="cn-label">REASON</span>
+          <input type="text" name="reason" class="cn-input" placeholder="Goods Returned / Rate Diff">
+        </div>
+        <div class="col-md-2">
+          <span class="cn-label">(I) INTERSTATE / (W) WITHIN STATE</span>
+          <div class="d-flex gap-2 mt-1">
+            <label class="gst-badge" style="border-color:#1e40af;background:#eff6ff;color:#1e40af" id="cn_lbl_W">
+              <input type="radio" name="gst_type" value="W" checked onchange="hlGst('cn')" style="accent-color:#1e40af"> W
+            </label>
+            <label class="gst-badge" style="border-color:#dc2626;background:#fef2f2;color:#dc2626;opacity:.45" id="cn_lbl_I">
+              <input type="radio" name="gst_type" value="I" onchange="hlGst('cn')" style="accent-color:#dc2626"> I
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Credit Note Entry Row -->
+  <div class="ctc-card mb-2">
+    <div class="ctc-card-body py-2">
+      <div class="entry-row-box">
+        <div class="row g-2 align-items-end">
+          <div class="col-md-3">
+            <label>ITEM DESCRIPTION</label>
+            <input type="text" id="e_desc" class="cn-input" placeholder="Type item description...">
+          </div>
+          <div class="col-md-1"><label>HSN NO</label><input type="text" id="e_hsn" class="cn-input"></div>
+          <div class="col-md-1"><label>UNIT</label><input type="text" id="e_unit" class="cn-input" placeholder="Pcs"></div>
+          <div class="col-md-1"><label>QTY</label><input type="number" id="e_qty" class="cn-input" value="1" step="0.01" onchange="calcCN()"></div>
+          <div class="col-md-1"><label>MRP</label><input type="number" id="e_mrp" class="cn-input" value="0" step="0.01"></div>
+          <div class="col-md-1"><label>RATE</label><input type="number" id="e_rate" class="cn-input" value="0" step="0.01" onchange="calcCN()"></div>
+          <div class="col-md-1"><label>DIS%</label><input type="number" id="e_dis" class="cn-input" value="0" step="0.01" onchange="calcCN()"></div>
+          <div class="col-md-1"><label>DIS AMT</label><input type="number" id="e_disamt" class="cn-input" value="0" readonly style="background:#f1f5f9"></div>
+          <div class="col-md-1"><label>S.RATE</label><input type="number" id="e_srate" class="cn-input" value="0" readonly style="background:#f1f5f9"></div>
+          <div class="col-md-1"><label>GST%</label><input type="number" id="e_tax" class="cn-input" value="18" step="0.01"></div>
+          <div class="col-md-auto"><label>&nbsp;</label>
+            <button type="button" class="btn-ctc" onclick="addCNItem()" style="height:26px;padding:0 14px;font-size:.78rem">OK</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Credit Note Grid -->
+  <div class="ctc-card mb-2">
+    <div class="table-responsive" style="min-height:120px">
+      <table class="table grid-table mb-0">
+        <thead>
+          <tr>
+            <th>#</th><th>ITEM DESCRIPTION</th><th>HSN CODE</th><th>UNIT</th>
+            <th>QTY</th><th>RATE</th><th>DIS%</th><th>DIS AMT</th><th>S.RATE</th><th>AMOUNT</th><th></th>
+          </tr>
+        </thead>
+        <tbody id="cnGridBody">
+          <tr><td colspan="11" class="text-center text-muted py-3" style="font-size:.82rem"><i class="fa fa-arrow-up me-1"></i>Add items using entry row above</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Credit Note Footer -->
+  <div class="ctc-card mb-3">
+    <div class="ctc-card-body py-2">
+      <div class="row g-3">
+        <div class="col-md-4">
+          <label class="form-label-sm">Remarks</label>
+          <textarea name="notes" class="form-control form-control-sm" rows="3" placeholder="Additional remarks..."></textarea>
+        </div>
+        <div class="col-md-8">
+          <table class="table totals-box mb-0">
+            <tr style="background:#f8fafc"><td>TOTAL AMOUNT</td><td class="text-end fw-600" id="cn_totalAmt">0.00</td></tr>
+            <tr style="background:#f8fafc"><td>GST AMT</td><td class="text-end fw-600 text-success" id="cn_gstAmt">0.00</td></tr>
+            <tr style="background:#f8fafc">
+              <td>ADD/LESS &nbsp;<input type="text" name="add_less1_label" id="al1_label" class="form-control form-control-sm d-inline" placeholder="A=Add L=Less" style="width:110px" oninput="applySign(1)"></td>
+              <td class="text-end"><input type="number" name="add_less1" id="al1" class="form-control form-control-sm d-inline" value="0" step="0.01" style="width:110px" onchange="calcCNTotals()"></td>
+            </tr>
+            <tr style="background:#f8fafc">
+              <td>ADD/LESS &nbsp;<input type="text" name="add_less2_label" id="al2_label" class="form-control form-control-sm d-inline" placeholder="A=Add L=Less" style="width:110px" oninput="applySign(2)"></td>
+              <td class="text-end"><input type="number" name="add_less2" id="al2" class="form-control form-control-sm d-inline" value="0" step="0.01" style="width:110px" onchange="calcCNTotals()"></td>
+            </tr>
+            <tr class="grand"><td><strong>NET AMOUNT</strong></td><td class="text-end fs-5"><strong id="cn_netAmt">0.00</strong></td></tr>
+            <tr class="net-row"><td>NET ROUNDED</td><td class="text-end" id="cn_netRounded">0</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="d-flex gap-2 mb-4">
+    <button type="submit" class="btn-ctc"><i class="fa fa-check me-1"></i>Confirm</button>
+    <a href="/credit-note/?type={{ note_type }}" class="btn-ctc-outline">Exit</a>
+  </div>
+</form>
+
+{% endblock %}
+{% block extra_js %}
+<script>
+let gridItems = [];
+
+// ── GST type highlight ──────────────────────────────────────
+function hlGst(prefix) {
+    const val = document.querySelector('input[name="gst_type"]:checked').value;
+    const wLbl = document.getElementById(prefix+'_lbl_W');
+    const iLbl = document.getElementById(prefix+'_lbl_I');
+    if (wLbl) wLbl.style.opacity = val==='W'?'1':'0.45';
+    if (iLbl) iLbl.style.opacity = val==='I'?'1':'0.45';
+}
+
+{% if note_type == 'vendor' %}
+// ════════════════ DEBIT NOTE JS ════════════════
+function calcDN() {
+    const qty  = parseFloat(document.getElementById('e_qty').value)  || 0;
+    const rate = parseFloat(document.getElementById('e_rate').value) || 0;
+    const dis  = parseFloat(document.getElementById('e_dis').value)  || 0;
+    // no auto-calc display in DN entry row — amount shown in grid
+}
+
+function addDNItem() {
+    const desc = document.getElementById('e_desc').value.trim();
+    if (!desc) { alert('Please enter item description'); document.getElementById('e_desc').focus(); return; }
+    const qty  = parseFloat(document.getElementById('e_qty').value)  || 0;
+    const rate = parseFloat(document.getElementById('e_rate').value) || 0;
+    const mrp  = parseFloat(document.getElementById('e_mrp').value)  || 0;
+    const dis  = parseFloat(document.getElementById('e_dis').value)  || 0;
+    const disAmt = (qty * rate) * dis / 100;
+    const amount = (qty * rate) - disAmt;
+    gridItems.push({
+        description: desc,
+        product_code: '',
+        hsn_no: document.getElementById('e_hsn').value,
+        unit:   document.getElementById('e_unit').value,
+        qty, rate, mrp, dis, dis_amt: disAmt,
+        sale_rate: rate - (rate*dis/100),
+        tax_rate: 0, tax_amt: 0, amount
+    });
+    renderDNGrid();
+    ['e_desc','e_hsn','e_unit'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('e_qty').value  = '0';
+    document.getElementById('e_rate').value = '0.0000';
+    document.getElementById('e_mrp').value  = '0';
+    document.getElementById('e_dis').value  = '0';
+    document.getElementById('e_desc').focus();
+}
+
+function removeDNItem(idx) { gridItems.splice(idx,1); renderDNGrid(); }
+
+function renderDNGrid() {
+    const tbody = document.getElementById('dnGridBody');
+    tbody.innerHTML = '';
+    if (!gridItems.length) {
+        tbody.innerHTML = '<tr><td colspan="10" class="text-center text-muted py-3" style="font-size:.82rem"><i class="fa fa-arrow-up me-1"></i>Add items using entry row above</td></tr>';
+    } else {
+        gridItems.forEach((item,idx) => {
+            tbody.insertAdjacentHTML('beforeend',`<tr>
+                <td>${idx+1}</td>
+                <td><span style="font-size:.75rem;color:#64748b">${item.product_code||'-'}</span></td>
+                <td><strong>${item.description}</strong></td>
+                <td>${item.hsn_no||'-'}</td>
+                <td>${item.qty}</td>
+                <td>${item.rate.toFixed(4)}</td>
+                <td>${item.mrp.toFixed(2)}</td>
+                <td>${item.dis}%</td>
+                <td><strong>${item.amount.toFixed(2)}</strong></td>
+                <td><button type="button" class="btn-sm-icon btn-delete" onclick="removeDNItem(${idx})"><i class="fa fa-trash"></i></button></td>
+            </tr>`);
+        });
+    }
+    document.getElementById('items_json').value = JSON.stringify(gridItems);
+    calcDNTotals();
+}
+
+function calcDNTotals() {
+    let totalAmt=0, disAmt=0, totalQty=0;
+    gridItems.forEach(item => { totalAmt += item.qty*item.rate; disAmt += item.dis_amt; totalQty += item.qty; });
+    const freight  = parseFloat(document.getElementById('dn_freight').value) || 0;
+    const gstPct   = parseFloat(document.getElementById('dn_gstPct').value)  || 0;
+    const gstAmt   = (totalAmt - disAmt) * gstPct / 100;
+    const gstOnFrt = freight * gstPct / 100;
+    const net      = totalAmt - disAmt + gstAmt + freight + gstOnFrt;
+    document.getElementById('dn_totalQty').textContent      = totalQty;
+    document.getElementById('dn_totalAmt').textContent      = totalAmt.toFixed(2);
+    document.getElementById('dn_disAmt').textContent        = disAmt.toFixed(2);
+    document.getElementById('dn_gstAmt').textContent        = gstAmt.toFixed(2);
+    document.getElementById('dn_gstOnFreight').textContent  = gstOnFrt.toFixed(2);
+    document.getElementById('dn_netAmt').textContent        = net.toFixed(2);
+    document.getElementById('dn_netRounded').textContent    = Math.round(net);
+    document.getElementById('dn_freightHidden').value       = freight;
+    document.getElementById('dn_gofHidden').value           = gstOnFrt.toFixed(2);
+    document.getElementById('dn_disHidden').value           = disAmt.toFixed(2);
+}
+
+document.getElementById('e_qty').addEventListener('keydown', e => { if(e.key==='Enter'){e.preventDefault(); document.getElementById('e_rate').focus(); document.getElementById('e_rate').select();} });
+document.getElementById('e_dis').addEventListener('keydown', e => { if(e.key==='Enter'){e.preventDefault(); addDNItem();} });
+
+{% else %}
+// ════════════════ CREDIT NOTE JS ════════════════
+function calcCN() {
+    const rate = parseFloat(document.getElementById('e_rate').value) || 0;
+    const dis  = parseFloat(document.getElementById('e_dis').value)  || 0;
+    const disAmt = rate * dis / 100;
+    document.getElementById('e_disamt').value = disAmt.toFixed(2);
+    document.getElementById('e_srate').value  = (rate - disAmt).toFixed(2);
+}
+
+function addCNItem() {
+    const desc = document.getElementById('e_desc').value.trim();
+    if (!desc) { alert('Please enter item description'); document.getElementById('e_desc').focus(); return; }
+    const qty    = parseFloat(document.getElementById('e_qty').value)  || 0;
+    const mrp    = parseFloat(document.getElementById('e_mrp').value)  || 0;
+    const rate   = parseFloat(document.getElementById('e_rate').value) || 0;
+    const dis    = parseFloat(document.getElementById('e_dis').value)  || 0;
+    const tax    = parseFloat(document.getElementById('e_tax').value)  || 0;
+    const disAmt = rate * dis / 100;
+    const srate  = rate - disAmt;
+    const amount = qty * srate;
+    const taxAmt = amount * tax / 100;
+    gridItems.push({
+        description: desc,
+        hsn_no: document.getElementById('e_hsn').value,
+        unit:   document.getElementById('e_unit').value,
+        qty, mrp, rate, dis, dis_amt: disAmt, sale_rate: srate,
+        tax_rate: tax, tax_amt: taxAmt, amount
+    });
+    renderCNGrid();
+    ['e_desc','e_hsn','e_unit'].forEach(id => document.getElementById(id).value = '');
+    ['e_mrp','e_rate','e_dis','e_disamt','e_srate'].forEach(id => document.getElementById(id).value = '0');
+    document.getElementById('e_qty').value  = '1';
+    document.getElementById('e_tax').value  = '18';
+    document.getElementById('e_desc').focus();
+}
+
+function removeCNItem(idx) { gridItems.splice(idx,1); renderCNGrid(); }
+
+function renderCNGrid() {
+    const tbody = document.getElementById('cnGridBody');
+    tbody.innerHTML = '';
+    if (!gridItems.length) {
+        tbody.innerHTML = '<tr><td colspan="11" class="text-center text-muted py-3" style="font-size:.82rem"><i class="fa fa-arrow-up me-1"></i>Add items using entry row above</td></tr>';
+    } else {
+        gridItems.forEach((item,idx) => {
+            tbody.insertAdjacentHTML('beforeend',`<tr>
+                <td>${idx+1}</td>
+                <td><strong>${item.description}</strong></td>
+                <td>${item.hsn_no||'-'}</td>
+                <td>${item.unit||'-'}</td>
+                <td>${item.qty}</td>
+                <td>${item.rate.toFixed(2)}</td>
+                <td>${item.dis}%</td>
+                <td>${item.dis_amt.toFixed(2)}</td>
+                <td>${item.sale_rate.toFixed(2)}</td>
+                <td><strong>${item.amount.toFixed(2)}</strong></td>
+                <td><button type="button" class="btn-sm-icon btn-delete" onclick="removeCNItem(${idx})"><i class="fa fa-trash"></i></button></td>
+            </tr>`);
+        });
+    }
+    document.getElementById('items_json').value = JSON.stringify(gridItems);
+    calcCNTotals();
+}
+
+function calcCNTotals() {
+    let total=0, gst=0;
+    gridItems.forEach(item => { total += item.amount; gst += item.tax_amt; });
+    const al1 = parseFloat(document.getElementById('al1').value) || 0;
+    const al2 = parseFloat(document.getElementById('al2').value) || 0;
+    const net  = total + gst + al1 + al2;
+    document.getElementById('cn_totalAmt').textContent  = total.toFixed(2);
+    document.getElementById('cn_gstAmt').textContent    = gst.toFixed(2);
+    document.getElementById('cn_netAmt').textContent    = net.toFixed(2);
+    document.getElementById('cn_netRounded').textContent = Math.round(net);
+}
+
+function applySign(n) {
+    const label = document.getElementById('al'+n+'_label').value.trim().toUpperCase();
+    const inp   = document.getElementById('al'+n);
+    const val   = Math.abs(parseFloat(inp.value)||0);
+    if (label.startsWith('L')) { inp.value=-val; inp.style.color='#dc2626'; }
+    else { inp.value=val; inp.style.color='#16a34a'; }
+    calcCNTotals();
+}
+
+document.getElementById('e_tax').addEventListener('keydown', e => { if(e.key==='Enter'){e.preventDefault(); addCNItem();} });
+{% endif %}
+
+document.getElementById('noteForm').addEventListener('submit', function(e) {
+    if (!gridItems.length) { e.preventDefault(); alert('Please add at least one item before saving.'); }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,126 @@
+{% extends 'base.html' %}
+{% block title %}{{ project.project_name }}{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h5><i class="fa fa-project-diagram me-2"></i>{{ project.project_name }}</h5>
+        <div class="page-breadcrumb">Projects &rsaquo; {{ project.project_name }}</div>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="/projects/" class="btn-ctc-outline"><i class="fa fa-arrow-left me-1"></i>Back</a>
+        <a href="/projects/{{ project.pk }}/edit/" class="btn-ctc"><i class="fa fa-pencil me-1"></i>Edit</a>
+    </div>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-md-8">
+        <div class="ctc-card mb-3">
+            <div class="ctc-card-header"><span><i class="fa fa-info-circle me-2"></i>Project Information</span></div>
+            <div class="ctc-card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Client:</strong> {{ project.client_display }}</p>
+                        <p><strong>Technology:</strong> <span class="badge-secondary">{{ project.technology|default:"-" }}</span></p>
+                        <p><strong>Status:</strong>
+                            {% if project.status|lower == 'live' %}<span class="badge-success">{{ project.status }}</span>
+                            {% elif project.status|lower == 'stopped' %}<span class="badge-danger">{{ project.status }}</span>
+                            {% else %}<span class="badge-info">{{ project.status }}</span>{% endif %}
+                        </p>
+                        <p><strong>Start Date:</strong> {{ project.start_date|default:"-" }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Payment Type:</strong> {{ project.get_payment_type_display }}</p>
+                        <p><strong>Amount:</strong> &#8377;{{ project.amount }}</p>
+                        <p><strong>Payment Status:</strong>
+                            {% if project.payment_status|lower == 'paid' %}<span class="badge-success">{{ project.payment_status }}</span>
+                            {% elif project.payment_status|lower == 'overdue' %}<span class="badge-danger">{{ project.payment_status }}</span>
+                            {% else %}<span class="badge-warning">{{ project.payment_status }}</span>{% endif %}
+                        </p>
+                        <p><strong>Next Due:</strong> {{ project.next_due_date|default:"-" }}</p>
+                    </div>
+                </div>
+                {% if project.description %}<hr><p><strong>Description:</strong><br>{{ project.description }}</p>{% endif %}
+                {% if project.payment_type == 'amc' %}<hr><p><strong>AMC Period:</strong> {{ project.amc_start_date|default:"-" }} to {{ project.amc_end_date|default:"-" }}</p>{% endif %}
+                {% if project.payment_type == 'subscription' %}<hr><p><strong>Monthly Due Day:</strong> {{ project.subscription_due_day|default:"-" }} of every month</p>{% endif %}
+            </div>
+        </div>
+
+        {% if project.server_details or project.login_url %}
+        <div class="ctc-card mb-3">
+            <div class="ctc-card-header"><span><i class="fa fa-server me-2"></i>Server &amp; Login Details</span></div>
+            <div class="ctc-card-body">
+                {% if project.login_url %}<p><strong>URL:</strong> <a href="{{ project.login_url }}" target="_blank">{{ project.login_url }}</a></p>{% endif %}
+                {% if project.login_username %}<p><strong>Username:</strong> {{ project.login_username }}</p>{% endif %}
+                {% if project.login_password %}<p><strong>Password:</strong> <code>{{ project.login_password }}</code></p>{% endif %}
+                {% if project.server_details %}<p><strong>Server Details:</strong><br>{{ project.server_details|linebreaks }}</p>{% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% if project.notes %}
+        <div class="ctc-card">
+            <div class="ctc-card-header"><span>Notes</span></div>
+            <div class="ctc-card-body">{{ project.notes|linebreaks }}</div>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="col-md-4">
+        <div class="ctc-card mb-3">
+            <div class="ctc-card-header d-flex justify-content-between align-items-center">
+                <span>Payment History</span>
+                <small>Total: &#8377;{{ total_received }}</small>
+            </div>
+            <div class="ctc-card-body p-0">
+                <table class="table table-sm mb-0">
+                    <thead><tr><th>Date</th><th>Amount</th><th>Mode</th><th></th></tr></thead>
+                    <tbody>
+                    {% for pay in payments %}
+                    <tr>
+                        <td>{{ pay.payment_date }}</td>
+                        <td>&#8377;{{ pay.amount }}</td>
+                        <td><small>{{ pay.payment_mode|default:"-" }}</small></td>
+                        <td>
+                            <a href="/projects/{{ project.pk }}/payment/{{ pay.pk }}/delete/" class="btn-sm-icon btn-delete" onclick="return confirm('Delete this payment record?')"><i class="fa fa-trash"></i></a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" class="text-center text-muted py-3">No payments recorded</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="ctc-card">
+            <div class="ctc-card-header"><span><i class="fa fa-plus-circle me-2"></i>Record New Payment</span></div>
+            <div class="ctc-card-body">
+                <form method="post" action="/projects/{{ project.pk }}/payment/add/">
+                    {% csrf_token %}
+                    <div class="mb-2">
+                        <label class="form-label small fw-semibold">Amount (&#8377;)</label>
+                        <input type="number" name="amount" class="form-control form-control-sm" step="0.01" required>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small fw-semibold">Payment Date</label>
+                        <input type="date" name="payment_date" class="form-control form-control-sm" required>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small fw-semibold">Payment Mode</label>
+                        <input type="text" name="payment_mode" class="form-control form-control-sm" placeholder="Cash, UPI, Bank...">
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small fw-semibold">Period Covered</label>
+                        <input type="text" name="period_covered" class="form-control form-control-sm" placeholder="e.g. Jan 2026">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Next Due Date</label>
+                        <input type="date" name="next_due_date" class="form-control form-control-sm">
+                    </div>
+                    <button type="submit" class="btn-ctc w-100"><i class="fa fa-plus me-1"></i>Add Payment</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

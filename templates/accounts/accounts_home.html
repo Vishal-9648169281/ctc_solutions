@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+{% block title %}Accounts{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h5><i class="fa fa-book-open me-2"></i>Accounts Overview</h5>
+        <div class="page-breadcrumb">Accounts</div>
+    </div>
+</div>
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="stat-card" style="background:linear-gradient(135deg,#1565c0,#1976d2)">
+            <div class="d-flex justify-content-between">
+                <div><div class="number">Rs.{{ total_sales }}</div><div class="label">Total Sales</div></div>
+                <i class="fa fa-shopping-bag icon"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card" style="background:linear-gradient(135deg,#e65100,#f57c00)">
+            <div class="d-flex justify-content-between">
+                <div><div class="number">Rs.{{ total_purchase }}</div><div class="label">Total Purchase</div></div>
+                <i class="fa fa-shopping-cart icon"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card" style="background:linear-gradient(135deg,#2e7d32,#388e3c)">
+            <div class="d-flex justify-content-between">
+                <div><div class="number">Rs.{{ profit }}</div><div class="label">Gross Profit</div></div>
+                <i class="fa fa-chart-line icon"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card" style="background:linear-gradient(135deg,#6a1b9a,#7b1fa2)">
+            <div class="d-flex justify-content-between">
+                <div><div class="number">Rs.{{ total_received }}</div><div class="label">Total Received</div></div>
+                <i class="fa fa-coins icon"></i>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="row g-3 mb-4">
+    <div class="col-md-6">
+        <div class="ctc-card">
+            <div class="ctc-card-header" style="background:#fff3cd;color:#856404;">
+                <span><i class="fa fa-exclamation-triangle me-2"></i>Receivables (Pending from Customers)</span>
+            </div>
+            <div class="ctc-card-body text-center py-4">
+                <h2 class="text-warning fw-bold">Rs.{{ receivable }}</h2>
+                <p class="text-muted">Amount pending from customers</p>
+                <a href="/accounts/customer-ledger/" class="btn-ctc">View Customer Ledger</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="ctc-card">
+            <div class="ctc-card-header" style="background:#f8d7da;color:#842029;">
+                <span><i class="fa fa-exclamation-circle me-2"></i>Payables (Pending to Vendors)</span>
+            </div>
+            <div class="ctc-card-body text-center py-4">
+                <h2 class="text-danger fw-bold">Rs.{{ payable }}</h2>
+                <p class="text-muted">Amount pending to vendors</p>
+                <a href="/accounts/vendor-ledger/" class="btn-ctc">View Vendor Ledger</a>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="row g-3">
+    <div class="col-md-4">
+        <a href="/accounts/customer-ledger/" class="text-decoration-none">
+            <div class="ctc-card">
+                <div class="ctc-card-body p-4 text-center">
+                    <i class="fa fa-address-card fa-3x text-primary mb-3 d-block"></i>
+                    <h5>Customer Ledger</h5>
+                    <p class="text-muted small">View individual customer account statement</p>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-4">
+        <a href="/accounts/vendor-ledger/" class="text-decoration-none">
+            <div class="ctc-card">
+                <div class="ctc-card-body p-4 text-center">
+                    <i class="fa fa-truck fa-3x text-warning mb-3 d-block"></i>
+                    <h5>Vendor Ledger</h5>
+                    <p class="text-muted small">View individual vendor account statement</p>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-4">
+        <a href="/reports/" class="text-decoration-none">
+            <div class="ctc-card">
+                <div class="ctc-card-body p-4 text-center">
+                    <i class="fa fa-chart-bar fa-3x text-success mb-3 d-block"></i>
+                    <h5>Reports</h5>
+                    <p class="text-muted small">View all business reports</p>
+                </div>
+            </div>
+        </a>
+    </div>
+</div>
+{% endblock %}

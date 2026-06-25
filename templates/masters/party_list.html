@@ -1,0 +1,153 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Party Master{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h5><i class="fa fa-address-book me-2"></i>Party Master</h5>
+        <div class="page-breadcrumb">Masters &rsaquo; Parties</div>
+    </div>
+    <div class="d-flex gap-2">
+        <button class="btn-ctc" onclick="openM('add')"><i class="fa fa-plus me-1"></i>Add</button>
+        <button class="btn-ctc-outline" onclick="openM('modify')"><i class="fa fa-pencil me-1"></i>Modify</button>
+        <button class="btn-ctc-outline" onclick="delRec()"><i class="fa fa-trash me-1"></i>Delete</button>
+    </div>
+</div>
+<div class="ctc-card">
+    <div class="ctc-card-header"><span><i class="fa fa-list me-2"></i>All Parties</span></div>
+    <div class="ctc-card-body p-0">
+        <table class="table table-hover mb-0 ctc-datatable" id="tb">
+            <thead><tr><th>Customer Name</th><th>City</th><th>Phone</th></tr></thead>
+            <tbody>
+            {% for p in parties %}
+            <tr style="cursor:pointer" onclick="selRow(this,'{{ p.pk }}','{{ p.name|escapejs }}','{{ p.address|escapejs }}','{{ p.city|escapejs }}','{{ p.mobile_number|escapejs }}','{{ p.email|escapejs }}','{{ p.contact_person|escapejs }}','{{ p.account_type }}','{{ p.gst_number|escapejs }}','{{ p.gst_registration_type }}','{{ p.state_id|default:'' }}','{{ p.opening_balance }}','{{ p.code|escapejs }}')">
+                <td>{{ p.name }}</td><td>{{ p.city }}</td><td>{{ p.mobile_number }}</td>
+            </tr>{% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal fade" id="partyModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header" style="background:linear-gradient(135deg,#1a237e,#1565c0);color:white">
+                <h5 class="modal-title" id="partyModalTitle">Add Party</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" id="pForm">
+                {% csrf_token %}
+                <input type="hidden" name="_pk" id="f_pk">
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label fw-semibold small">Name</label>
+                            <input type="text" name="name" id="f_name" class="form-control">
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label fw-semibold small">Address</label>
+                            <input type="text" name="address" id="f_addr" class="form-control">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold small">Sector</label>
+                            <input type="text" name="sector" class="form-control">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small">City</label>
+                            <input type="text" name="city" id="f_city" class="form-control">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small">State</label>
+                            <select name="state" id="f_state" class="form-select">
+                                <option value="">--SELECT--</option>
+                                {% for s in states %}<option value="{{ s.pk }}">{{ s.state_code }} - {{ s.state_name }}</option>{% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small">Phone No</label>
+                            <input type="text" name="mobile_number" id="f_phone" class="form-control">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small">Email</label>
+                            <input type="email" name="email" id="f_email" class="form-control">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small">Contact Person</label>
+                            <input type="text" name="contact_person" id="f_contact" class="form-control">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold small">Account Type</label>
+                            <select name="account_type" id="f_actype" class="form-select">
+                                <option value="SD">SD</option>
+                                <option value="SC">SC</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold small">Sundry</label>
+                            <input type="text" name="sundry" id="f_sundry" class="form-control">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small">GST No</label>
+                            <input type="text" name="gst_number" id="f_gst" class="form-control">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small">GST Category</label>
+                            <select name="gst_registration_type" id="f_gstreg" class="form-select">
+                                <option value="regular">Regular</option>
+                                <option value="composition">Composition</option>
+                                <option value="unregistered">Unregistered</option>
+                                <option value="consumer">Consumer</option>
+                                <option value="sez_unit">SEZ Unit</option>
+                                <option value="overseas">Overseas</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label fw-semibold small">AMC (Y/N)</label>
+                            <input type="text" name="amc_yn" id="f_amc" class="form-control" maxlength="1">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold small">AMC Amount</label>
+                            <input type="number" name="amc_amount" id="f_amcamt" class="form-control" value="0.00" step="0.01">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold small">Amt Received</label>
+                            <input type="number" name="amt_received" id="f_amtrcd" class="form-control" value="0.00" step="0.01">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold small">Association Since</label>
+                            <input type="text" name="assoc_since" id="f_assoc" class="form-control">
+                        </div>
+                        <input type="hidden" name="opening_balance" id="f_opbal" value="0">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn-ctc">Confirm</button>
+                    <button type="button" class="btn-ctc-outline" data-bs-dismiss="modal">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+let sP=null,sD={};
+const partyModal = new bootstrap.Modal(document.getElementById('partyModal'));
+function selRow(tr,pk,name,addr,city,phone,email,contact,actype,gst,gstreg,state,opbal,code){
+    document.querySelectorAll('#tb tbody tr').forEach(r=>r.classList.remove('table-active'));
+    tr.classList.add('table-active');sP=pk;sD={pk,name,addr,city,phone,email,contact,actype,gst,gstreg,state,opbal,code};
+}
+function openM(m){
+    const title=document.getElementById('partyModalTitle'),f=document.getElementById('pForm');
+    if(m==='add'){title.textContent='Add Party';f.action="{% url 'party_add' %}";clearF();setRO(false);}
+    else if(m==='modify'){if(!sP){alert('Select a record!');return;}title.textContent='Modify Party';f.action="{% url 'party_edit' 0 %}".replace('/0/','/'+sP+'/');fillF();setRO(false);}
+    else{if(!sP){alert('Select a record!');return;}title.textContent='View Party';fillF();setRO(true);}
+    partyModal.show();
+}
+function clearF(){document.getElementById('f_pk').value='';['f_name','f_addr','f_city','f_phone','f_email','f_contact','f_gst','f_amc','f_assoc','f_sundry'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});document.getElementById('f_actype').value='SD';document.getElementById('f_gstreg').value='unregistered';document.getElementById('f_amcamt').value='0.00';document.getElementById('f_amtrcd').value='0.00';document.getElementById('f_opbal').value='0';}
+function fillF(){document.getElementById('f_pk').value=sD.pk;document.getElementById('f_name').value=sD.name;document.getElementById('f_addr').value=sD.addr;document.getElementById('f_city').value=sD.city;document.getElementById('f_phone').value=sD.phone;document.getElementById('f_email').value=sD.email;document.getElementById('f_contact').value=sD.contact;document.getElementById('f_actype').value=sD.actype;document.getElementById('f_gst').value=sD.gst;document.getElementById('f_gstreg').value=sD.gstreg;document.getElementById('f_opbal').value=sD.opbal;}
+function setRO(v){document.querySelectorAll('#pForm input,#pForm select').forEach(el=>{el.readOnly=v;});}
+function delRec(){if(!sP){alert('Select a record!');return;}if(confirm('Delete: '+sD.name+'?')){const f=document.createElement('form');f.method='post';f.action="{% url 'party_delete' 0 %}".replace('/0/','/'+sP+'/');f.innerHTML='{% csrf_token %}';document.body.appendChild(f);f.submit();}}
+</script>
+{% endblock %}

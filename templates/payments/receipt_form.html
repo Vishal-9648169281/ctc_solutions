@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+{% block title %}Make Payment{% endblock %}
+{% block content %}
+
+<div class="page-header">
+    <h5><i class="fa fa-university me-2"></i>Make Payment to Vendor</h5>
+    <a href="/payments/receipt/" class="btn btn-ctc-outline btn-sm"><i class="fa fa-arrow-left me-1"></i>Back</a>
+</div>
+
+<form method="post">
+    {% csrf_token %}
+
+    <div class="ctc-card mb-3">
+        <div class="ctc-card-header">
+            <i class="fa fa-file-text me-2"></i>Voucher Information
+        </div>
+        <div class="ctc-card-body">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label-sm">Voucher Number</label>
+                    <input type="text" class="form-control form-control-sm" value="{{ voucher_number }}" readonly>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label-sm">Vendor <span class="text-danger">*</span></label>
+                    <select name="vendor" class="form-select form-select-sm" required>
+                        <option value="">-- Select Vendor --</option>
+                        {% for v in vendors %}
+                        <option value="{{ v.pk }}">{{ v.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label-sm">Against Bill</label>
+                    <select name="bill" class="form-select form-select-sm">
+                        <option value="">-- Select Bill (Optional) --</option>
+                        {% for b in bills %}
+                        <option value="{{ b.pk }}">{{ b.bill_number }} - Rs.{{ b.balance_due }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="ctc-card mb-3">
+        <div class="ctc-card-header">
+            <i class="fa fa-credit-card me-2"></i>Payment Details
+        </div>
+        <div class="ctc-card-body">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label-sm">Payment Date <span class="text-danger">*</span></label>
+                    <input type="date" name="payment_date" class="form-control form-control-sm" value="{{ today }}" required>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label-sm">Amount <span class="text-danger">*</span></label>
+                    <input type="number" name="amount" class="form-control form-control-sm" step="0.01" required>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label-sm">Payment Mode</label>
+                    <select name="payment_mode" class="form-select form-select-sm">
+                        <option value="cash">Cash</option>
+                        <option value="bank">Bank Transfer</option>
+                        <option value="cheque">Cheque</option>
+                        <option value="upi">UPI</option>
+                        <option value="card">Card</option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label-sm">Reference Number</label>
+                    <input type="text" name="reference_number" class="form-control form-control-sm" placeholder="Cheque/UTR/UPI ID">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label-sm">Notes</label>
+                    <input type="text" name="notes" class="form-control form-control-sm">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2 mb-4">
+        <button type="submit" class="btn btn-ctc btn-sm"><i class="fa fa-save me-1"></i>Save Payment</button>
+        <a href="/payments/receipt/" class="btn btn-ctc-outline btn-sm"><i class="fa fa-times me-1"></i>Cancel</a>
+    </div>
+</form>
+
+{% endblock %}

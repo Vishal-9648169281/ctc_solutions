@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+
+<div class="page-header">
+    <h5><i class="fa fa-balance-scale me-2"></i>{{ title }}</h5>
+    <a href="/masters/units/" class="btn btn-ctc-outline btn-sm"><i class="fa fa-arrow-left me-1"></i>Back</a>
+</div>
+
+<form method="post">
+    {% csrf_token %}
+    <div class="ctc-card mb-3">
+        <div class="ctc-card-header">
+            <i class="fa fa-info-circle me-2"></i>Unit Details
+        </div>
+        <div class="ctc-card-body">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label-sm">Unit Name <span class="text-danger">*</span></label>
+                    <input type="text" name="name" value="{{ obj.name|default:'' }}" class="form-control form-control-sm" required autofocus>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label-sm">Short Name <span class="text-danger">*</span></label>
+                    <input type="text" name="short_name" value="{{ obj.short_name|default:'' }}" class="form-control form-control-sm" required>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2 mb-4">
+        <button type="submit" class="btn btn-ctc btn-sm"><i class="fa fa-save me-1"></i>Save</button>
+        <a href="/masters/units/" class="btn btn-ctc-outline btn-sm"><i class="fa fa-times me-1"></i>Cancel</a>
+    </div>
+</form>
+
+{% endblock %}

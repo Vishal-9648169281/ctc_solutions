@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+
+<div class="page-header">
+    <h5><i class="fa fa-user-plus me-2"></i>{{ title }}</h5>
+    <a href="/users/" class="btn btn-ctc-outline btn-sm"><i class="fa fa-arrow-left me-1"></i>Back</a>
+</div>
+
+<form method="post">
+    {% csrf_token %}
+
+    <div class="ctc-card mb-3">
+        <div class="ctc-card-header">
+            <i class="fa fa-id-badge me-2"></i>Account Information
+        </div>
+        <div class="ctc-card-body">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label-sm">Username <span class="text-danger">*</span></label>
+                    <input type="text" name="username" value="{{ obj.username|default:'' }}" class="form-control form-control-sm" required {% if obj %}readonly{% endif %}>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label-sm">Role <span class="text-danger">*</span></label>
+                    <select name="role" class="form-select form-select-sm" required>
+                        <option value="sales" {% if profile.role == 'sales' %}selected{% endif %}>Sales Staff</option>
+                        <option value="accountant" {% if profile.role == 'accountant' %}selected{% endif %}>Accountant</option>
+                        <option value="engineer" {% if profile.role == 'engineer' %}selected{% endif %}>Service Engineer</option>
+                        <option value="admin" {% if profile.role == 'admin' %}selected{% endif %}>Admin</option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label-sm">
+                        Password {% if not obj %}<span class="text-danger">*</span>{% else %}<small class="text-muted">(leave blank to keep current)</small>{% endif %}
+                    </label>
+                    <input type="password" name="password" class="form-control form-control-sm" {% if not obj %}required{% endif %}>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="ctc-card mb-3">
+        <div class="ctc-card-header">
+            <i class="fa fa-user-circle me-2"></i>Personal Details
+        </div>
+        <div class="ctc-card-body">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label-sm">First Name</label>
+                    <input type="text" name="first_name" value="{{ obj.first_name|default:'' }}" class="form-control form-control-sm">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label-sm">Last Name</label>
+                    <input type="text" name="last_name" value="{{ obj.last_name|default:'' }}" class="form-control form-control-sm">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label-sm">Email</label>
+                    <input type="email" name="email" value="{{ obj.email|default:'' }}" class="form-control form-control-sm">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label-sm">Phone</label>
+                    <input type="text" name="phone" value="{{ profile.phone|default:'' }}" class="form-control form-control-sm">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2 mb-4">
+        <button type="submit" class="btn btn-ctc btn-sm"><i class="fa fa-save me-1"></i>Save User</button>
+        <a href="/users/" class="btn btn-ctc-outline btn-sm"><i class="fa fa-times me-1"></i>Cancel</a>
+    </div>
+</form>
+
+{% endblock %}

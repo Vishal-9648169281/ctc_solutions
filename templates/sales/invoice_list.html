@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% block title %}Sales Invoices{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h5><i class="fa fa-file-invoice-dollar me-2"></i>Sales Invoices</h5>
+        <div class="page-breadcrumb">Sales &rsaquo; Invoices</div>
+    </div>
+    <a href="/sales/invoices/add/?type=gst" class="btn-ctc"><i class="fa fa-plus me-1"></i>New Invoice</a>
+</div>
+<div class="ctc-card mb-3">
+    <div class="ctc-card-body py-2">
+        <div class="d-flex gap-2 flex-wrap">
+            <a href="/sales/invoices/?type=all" class="btn-ctc-outline">All</a>
+            <a href="/sales/invoices/?type=gst" class="btn-ctc-outline">GST Invoice</a>
+            <a href="/sales/invoices/?type=proforma" class="btn-ctc-outline">Proforma</a>
+            <a href="/sales/invoices/?type=export" class="btn-ctc-outline">Export</a>
+        </div>
+    </div>
+</div>
+<div class="ctc-card">
+    <div class="ctc-card-header"><span><i class="fa fa-list me-2"></i>Invoices ({{ invoices.count }} records)</span></div>
+    <div class="ctc-card-body p-0">
+        <table class="table table-hover mb-0 ctc-datatable">
+            <thead><tr><th>#</th><th>Invoice No</th><th>Type</th><th>Customer</th><th>Date</th><th>Total</th><th>Paid</th><th>Balance</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody>
+            {% for inv in invoices %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td><strong>{{ inv.invoice_number }}</strong></td>
+                <td>
+                    {% if inv.invoice_type == 'gst' %}<span class="badge-primary">GST</span>
+                    {% elif inv.invoice_type == 'proforma' %}<span class="badge-success">Proforma</span>
+                    {% else %}<span class="badge-warning">Export</span>{% endif %}
+                </td>
+                <td>{{ inv.customer.name }}</td>
+                <td>{{ inv.invoice_date }}</td>
+                <td>Rs.{{ inv.total_amount }}</td>
+                <td>Rs.{{ inv.paid_amount }}</td>
+                <td>Rs.{{ inv.balance_due }}</td>
+                <td>
+                    {% if inv.status == 'paid' %}<span class="badge-success">Paid</span>
+                    {% elif inv.status == 'partial' %}<span class="badge-warning">Partial</span>
+                    {% else %}<span class="badge-danger">Pending</span>{% endif %}
+                </td>
+                <td>
+                    <a href="/sales/invoices/{{ inv.pk }}/" class="btn-sm-icon btn-view" title="View"><i class="fa fa-eye"></i></a>
+                    <a href="/sales/invoices/{{ inv.pk }}/pdf/" target="_blank" class="btn-sm-icon btn-print" title="PDF"><i class="fa fa-file-pdf"></i></a>
+                    <a href="/sales/invoices/delete/{{ inv.pk }}/" class="btn-sm-icon btn-delete" title="Delete" onclick="return confirm('Delete?')"><i class="fa fa-trash"></i></a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="10" class="text-center text-muted py-4"><i class="fa fa-inbox fa-2x d-block mb-2"></i>No invoices found</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

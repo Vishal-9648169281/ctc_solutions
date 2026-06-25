@@ -1,0 +1,284 @@
+{% extends 'base.html' %}
+{% block title %}Party Master Entry{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <h5><i class="fa fa-users me-2"></i>{% if party %}Modify{% else %}Add{% endif %} Party</h5>
+    <div class="page-breadcrumb">Masters &rsaquo; <span>Party</span></div>
+  </div>
+  <a href="/masters/party/" class="btn-ctc-outline"><i class="fa fa-arrow-left me-1"></i>Back</a>
+</div>
+
+<form method="post">
+  {% csrf_token %}
+  <div class="row justify-content-center">
+    <div class="col-md-8">
+
+      <div class="ctc-card mb-3">
+        <div class="ctc-card-header"><h6><i class="fa fa-address-card"></i>Party Details</h6></div>
+        <div class="ctc-card-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label-sm">Party Name <span class="text-danger">*</span></label>
+              <input type="text" name="name" class="form-control form-control-sm" value="{{ party.name|default:'' }}" required autofocus placeholder="Enter party name">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label-sm">Contact Person</label>
+              <input type="text" name="contact_person" class="form-control form-control-sm" value="{{ party.contact_person|default:'' }}" placeholder="Concern person">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label-sm">Mobile Number</label>
+              <input type="text" name="mobile_number" class="form-control form-control-sm" value="{{ party.mobile_number|default:'' }}" placeholder="Mobile">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label-sm">Email ID</label>
+              <input type="email" name="email" class="form-control form-control-sm" value="{{ party.email|default:'' }}" placeholder="Email address">
+            </div>
+            <div class="col-md-8">
+              <label class="form-label-sm">Address</label>
+              <input type="text" name="address" class="form-control form-control-sm" value="{{ party.address|default:'' }}" placeholder="Street address">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label-sm">City</label>
+              <input type="text" name="city" class="form-control form-control-sm" value="{{ party.city|default:'' }}" placeholder="City">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="ctc-card mb-3">
+        <div class="ctc-card-header"><h6><i class="fa fa-file-invoice"></i>GST & Account Details</h6></div>
+        <div class="ctc-card-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label-sm">Account Type (SD/SC) <span class="text-danger">*</span></label>
+              <div class="input-group input-group-sm">
+                <input type="text" id="account_type_display" class="form-control form-control-sm" readonly
+                       value="{% if party.account_type == 'SC' %}SC - Sundry Creditor{% else %}SD - Sundry Debtor{% endif %}"
+                       style="background:#f8fafc;cursor:pointer" onclick="openAccountTypeLookup()">
+                <button type="button" class="btn btn-outline-primary" onclick="openAccountTypeLookup()" style="font-size:.75rem"><i class="fa fa-ellipsis"></i></button>
+              </div>
+              <input type="hidden" name="account_type" id="account_type_value" value="{{ party.account_type|default:'SD' }}">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label-sm">GST Reg. Type</label>
+              <div class="input-group input-group-sm">
+                <input type="text" id="gst_type_display" class="form-control form-control-sm" readonly
+                       value="{{ party.get_gst_registration_type_display|default:'Unregistered' }}"
+                       style="background:#f8fafc;cursor:pointer" onclick="openGstTypeLookup()">
+                <button type="button" class="btn btn-outline-primary" onclick="openGstTypeLookup()" style="font-size:.75rem"><i class="fa fa-ellipsis"></i></button>
+              </div>
+              <input type="hidden" name="gst_registration_type" id="gst_type_value" value="{{ party.gst_registration_type|default:'unregistered' }}">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label-sm">GST No</label>
+              <input type="text" name="gst_number" class="form-control form-control-sm" value="{{ party.gst_number|default:'' }}" placeholder="GSTIN number">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label-sm">State</label>
+              <div class="input-group input-group-sm">
+                <input type="text" id="state_display" class="form-control form-control-sm" readonly
+                       value="{{ party.state.state_name|default:'' }}"
+                       style="background:#f8fafc;cursor:pointer" onclick="openStateLookup()">
+                <button type="button" class="btn btn-outline-primary" onclick="openStateLookup()" style="font-size:.75rem"><i class="fa fa-ellipsis"></i></button>
+              </div>
+              <input type="hidden" name="state" id="state_value" value="{{ party.state_id|default:'' }}">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label-sm">GST Type</label>
+              <div class="d-flex gap-2">
+                <label class="d-flex align-items-center gap-1 px-3 py-1 rounded" style="border:2px solid {% if party.gst_type == 'W' %}#1e40af{% else %}#e2e8f0{% endif %};cursor:pointer;background:{% if party.gst_type == 'W' %}#eff6ff{% else %}#fff{% endif %}" id="lbl_W">
+                  <input type="radio" name="gst_type" value="W" {% if party.gst_type != 'I' %}checked{% endif %} onchange="highlightGstType()" style="accent-color:#1e40af">
+                  <strong>W</strong>&nbsp;Within State <small class="text-muted">(CGST+SGST)</small>
+                </label>
+                <label class="d-flex align-items-center gap-1 px-3 py-1 rounded" style="border:2px solid {% if party.gst_type == 'I' %}#dc2626{% else %}#e2e8f0{% endif %};cursor:pointer;background:{% if party.gst_type == 'I' %}#fef2f2{% else %}#fff{% endif %}" id="lbl_I">
+                  <input type="radio" name="gst_type" value="I" {% if party.gst_type == 'I' %}checked{% endif %} onchange="highlightGstType()" style="accent-color:#dc2626">
+                  <strong>I</strong>&nbsp;Inter State <small class="text-muted">(IGST)</small>
+                </label>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label-sm">Opening Balance</label>
+              <input type="number" step="0.01" name="opening_balance" class="form-control form-control-sm" value="{{ party.opening_balance|default:'0' }}">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- AMC Details -->
+      <div class="ctc-card mb-3">
+        <div class="ctc-card-header"><h6><i class="fa fa-calendar-check"></i>AMC Details</h6></div>
+        <div class="ctc-card-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label-sm">AMC Start Date</label>
+              <input type="date" name="amc_start_date" class="form-control form-control-sm" value="{{ party.amc_start_date|date:'Y-m-d'|default:'' }}">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label-sm">AMC End Date</label>
+              <input type="date" name="amc_end_date" class="form-control form-control-sm" value="{{ party.amc_end_date|date:'Y-m-d'|default:'' }}">
+            </div>
+            <div class="col-md-12" id="amcStatus" style="display:none"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="d-flex gap-2 mb-4">
+        <button type="submit" class="btn-ctc"><i class="fa fa-save me-1"></i>Confirm</button>
+        <a href="/masters/party/" class="btn-ctc-outline">Exit</a>
+      </div>
+
+    </div>
+  </div>
+</form>
+
+<!-- Account Type Modal -->
+<div class="modal fade" id="accountTypeModal" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content" style="border-radius:12px;overflow:hidden">
+      <div class="modal-header" style="background:linear-gradient(135deg,#1e40af,#1d4ed8);color:#fff;padding:12px 16px">
+        <h6 class="modal-title mb-0"><i class="fa fa-list me-2"></i>Select Account Type</h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-0">
+        <table class="table table-hover mb-0">
+          <tbody>
+            <tr style="cursor:pointer" onclick="selectAccountType('SD','SD - Sundry Debtor')">
+              <td style="padding:12px 16px"><span class="badge-primary me-2">SD</span>Sundry Debtor</td>
+            </tr>
+            <tr style="cursor:pointer" onclick="selectAccountType('SC','SC - Sundry Creditor')">
+              <td style="padding:12px 16px"><span class="badge-warning me-2">SC</span>Sundry Creditor</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- GST Type Modal -->
+<div class="modal fade" id="gstTypeModal" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content" style="border-radius:12px;overflow:hidden">
+      <div class="modal-header" style="background:linear-gradient(135deg,#1e40af,#1d4ed8);color:#fff;padding:12px 16px">
+        <h6 class="modal-title mb-0"><i class="fa fa-file-invoice me-2"></i>GST Registration Type</h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-0">
+        <input type="text" id="gstTypeSearch" class="form-control border-0 border-bottom rounded-0" placeholder="Search..." onkeyup="filterGstTypes()" style="font-size:.85rem">
+        <div style="max-height:300px;overflow-y:auto">
+          <table class="table table-hover mb-0" id="gstTypeTable">
+            <tbody>
+              <tr style="cursor:pointer" onclick="selectGstType('regular','Regular')"><td style="padding:10px 16px">Regular</td></tr>
+              <tr style="cursor:pointer" onclick="selectGstType('composition','Composition')"><td style="padding:10px 16px">Composition</td></tr>
+              <tr style="cursor:pointer" onclick="selectGstType('unregistered','Unregistered')"><td style="padding:10px 16px">Unregistered</td></tr>
+              <tr style="cursor:pointer" onclick="selectGstType('consumer','Consumer')"><td style="padding:10px 16px">Consumer</td></tr>
+              <tr style="cursor:pointer" onclick="selectGstType('sez_unit','SEZ Unit')"><td style="padding:10px 16px">SEZ Unit</td></tr>
+              <tr style="cursor:pointer" onclick="selectGstType('sez_developer','SEZ Developer')"><td style="padding:10px 16px">SEZ Developer</td></tr>
+              <tr style="cursor:pointer" onclick="selectGstType('deemed_export','Deemed Export')"><td style="padding:10px 16px">Deemed Export</td></tr>
+              <tr style="cursor:pointer" onclick="selectGstType('overseas','Overseas')"><td style="padding:10px 16px">Overseas</td></tr>
+              <tr style="cursor:pointer" onclick="selectGstType('uin_holder','UIN Holder')"><td style="padding:10px 16px">UIN Holder</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- State Lookup Modal -->
+<div class="modal fade" id="stateLookupModal" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content" style="border-radius:12px;overflow:hidden">
+      <div class="modal-header" style="background:linear-gradient(135deg,#1e40af,#1d4ed8);color:#fff;padding:12px 16px">
+        <h6 class="modal-title mb-0"><i class="fa fa-map-location-dot me-2"></i>Select State</h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-0">
+        <input type="text" id="stateSearch" class="form-control border-0 border-bottom rounded-0" placeholder="Search state..." onkeyup="filterStates()" style="font-size:.85rem">
+        <div style="max-height:350px;overflow-y:auto">
+          <table class="table table-hover mb-0" id="stateTable">
+            <tbody>
+              {% for s in states %}
+              <tr style="cursor:pointer" onclick="selectState({{ s.pk }},'{{ s.state_name }}')">
+                <td style="padding:8px 12px;width:60px"><span class="badge-info">{{ s.state_code }}</span></td>
+                <td style="padding:8px 12px">{{ s.state_name }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+{% block extra_js %}
+<script>
+const accountTypeModal = new bootstrap.Modal(document.getElementById('accountTypeModal'));
+const gstTypeModal = new bootstrap.Modal(document.getElementById('gstTypeModal'));
+const stateLookupModal = new bootstrap.Modal(document.getElementById('stateLookupModal'));
+function openAccountTypeLookup() { accountTypeModal.show(); }
+function openGstTypeLookup() { gstTypeModal.show(); }
+function openStateLookup() { stateLookupModal.show(); }
+function selectAccountType(val, label) {
+    document.getElementById('account_type_value').value = val;
+    document.getElementById('account_type_display').value = label;
+    accountTypeModal.hide();
+}
+function selectGstType(val, label) {
+    document.getElementById('gst_type_value').value = val;
+    document.getElementById('gst_type_display').value = label;
+    gstTypeModal.hide();
+}
+function selectState(id, name) {
+    document.getElementById('state_value').value = id;
+    document.getElementById('state_display').value = name;
+    stateLookupModal.hide();
+}
+function filterGstTypes() {
+    const filter = document.getElementById('gstTypeSearch').value.toLowerCase();
+    document.querySelectorAll('#gstTypeTable tr').forEach(row => {
+        row.style.display = row.textContent.toLowerCase().includes(filter) ? '' : 'none';
+    });
+}
+function filterStates() {
+    const filter = document.getElementById('stateSearch').value.toLowerCase();
+    document.querySelectorAll('#stateTable tr').forEach(row => {
+        row.style.display = row.textContent.toLowerCase().includes(filter) ? '' : 'none';
+    });
+}
+
+function highlightGstType() {
+    const val = document.querySelector('input[name="gst_type"]:checked').value;
+    document.getElementById('lbl_W').style.borderColor = val === 'W' ? '#1e40af' : '#e2e8f0';
+    document.getElementById('lbl_W').style.background  = val === 'W' ? '#eff6ff' : '#fff';
+    document.getElementById('lbl_I').style.borderColor = val === 'I' ? '#dc2626' : '#e2e8f0';
+    document.getElementById('lbl_I').style.background  = val === 'I' ? '#fef2f2' : '#fff';
+}
+
+function checkAmcStatus() {
+    const startEl = document.querySelector('input[name="amc_start_date"]');
+    const endEl   = document.querySelector('input[name="amc_end_date"]');
+    const statusEl = document.getElementById('amcStatus');
+    if (!endEl.value) { statusEl.style.display='none'; return; }
+    const today = new Date(); today.setHours(0,0,0,0);
+    const end   = new Date(endEl.value);
+    const diff  = Math.ceil((end - today) / (1000*60*60*24));
+    statusEl.style.display = 'block';
+    if (diff < 0) {
+        statusEl.innerHTML = '<div class="alert alert-danger py-1 mb-0"><i class="fa fa-triangle-exclamation me-1"></i>AMC Expired ' + Math.abs(diff) + ' days ago</div>';
+    } else if (diff <= 30) {
+        statusEl.innerHTML = '<div class="alert alert-warning py-1 mb-0"><i class="fa fa-clock me-1"></i>AMC expiring in ' + diff + ' days</div>';
+    } else {
+        statusEl.innerHTML = '<div class="alert alert-success py-1 mb-0"><i class="fa fa-circle-check me-1"></i>AMC Active — ' + diff + ' days remaining</div>';
+    }
+}
+document.addEventListener('DOMContentLoaded', function() {
+    checkAmcStatus();
+    document.querySelector('input[name="amc_end_date"]').addEventListener('change', checkAmcStatus);
+});
+</script>
+{% endblock %}

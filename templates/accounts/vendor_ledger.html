@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+{% block title %}Vendor Ledger{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h5><i class="fa fa-truck me-2"></i>Vendor Ledger</h5>
+        <div class="page-breadcrumb">Accounts &rsaquo; Vendor Ledger</div>
+    </div>
+    <a href="/accounts/" class="btn-ctc-outline"><i class="fa fa-arrow-left me-1"></i>Back</a>
+</div>
+<div class="ctc-card mb-3">
+    <div class="ctc-card-body py-3">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label fw-semibold small">Select Vendor</label>
+                <select name="vendor" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="">-- Select Vendor --</option>
+                    {% for v in vendors %}
+                    <option value="{{ v.pk }}" {% if selected_vendor == v.pk|stringformat:'s' %}selected{% endif %}>{{ v.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </form>
+    </div>
+</div>
+{% if vendor %}
+<div class="row g-3 mb-3">
+    <div class="col-md-4">
+        <div class="stat-card" style="background:linear-gradient(135deg,#e65100,#f57c00)">
+            <div class="number">Rs.{{ total_bill }}</div>
+            <div class="label">Total Billed</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card" style="background:linear-gradient(135deg,#2e7d32,#388e3c)">
+            <div class="number">Rs.{{ total_paid }}</div>
+            <div class="label">Total Paid</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card" style="background:linear-gradient(135deg,#1565c0,#1976d2)">
+            <div class="number">Rs.{{ balance }}</div>
+            <div class="label">Balance Due</div>
+        </div>
+    </div>
+</div>
+<div class="ctc-card mb-3">
+    <div class="ctc-card-header"><span><i class="fa fa-file-invoice me-2"></i>{{ vendor.name }} &mdash; Purchase Bills</span></div>
+    <div class="ctc-card-body p-0">
+        <table class="table table-sm mb-0 ctc-datatable">
+            <thead><tr><th>Bill No</th><th>Date</th><th>Total</th><th>Paid</th><th>Balance</th><th>Status</th></tr></thead>
+            <tbody>
+            {% for bill in bills %}
+            <tr>
+                <td>{{ bill.bill_number }}</td>
+                <td>{{ bill.bill_date }}</td>
+                <td>Rs.{{ bill.total_amount }}</td>
+                <td>Rs.{{ bill.paid_amount }}</td>
+                <td>Rs.{{ bill.balance_due }}</td>
+                <td>
+                    {% if bill.status == 'paid' %}<span class="badge-success">Paid</span>
+                    {% elif bill.status == 'partial' %}<span class="badge-warning">Partial</span>
+                    {% else %}<span class="badge-danger">Pending</span>{% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="text-center text-muted py-3">No bills</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+<div class="ctc-card">
+    <div class="ctc-card-header"><span><i class="fa fa-wallet me-2"></i>{{ vendor.name }} &mdash; Payments Made</span></div>
+    <div class="ctc-card-body p-0">
+        <table class="table table-sm mb-0">
+            <thead><tr><th>Voucher No</th><th>Date</th><th>Amount</th><th>Mode</th><th>Reference</th></tr></thead>
+            <tbody>
+            {% for p in payments %}
+            <tr>
+                <td>{{ p.voucher_number }}</td>
+                <td>{{ p.payment_date }}</td>
+                <td>Rs.{{ p.amount }}</td>
+                <td>{{ p.get_payment_mode_display }}</td>
+                <td>{{ p.reference_number|default:"-" }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="text-center text-muted py-3">No payments</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

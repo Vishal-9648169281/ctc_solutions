@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% block title %}Categories{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h5><i class="fa fa-tags me-2"></i>Categories</h5>
+        <div class="page-breadcrumb">Masters &rsaquo; Categories</div>
+    </div>
+    <a href="/masters/categories/add/" class="btn-ctc"><i class="fa fa-plus me-1"></i>Add Category</a>
+</div>
+<div class="ctc-card">
+    <div class="ctc-card-header"><span><i class="fa fa-list me-2"></i>All Categories</span></div>
+    <div class="ctc-card-body p-0">
+        <table class="table table-hover mb-0 ctc-datatable">
+            <thead><tr><th>#</th><th>Name</th><th>Description</th><th>Actions</th></tr></thead>
+            <tbody>
+            {% for c in categories %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td><strong>{{ c.name }}</strong></td>
+                <td>{{ c.description|default:"-" }}</td>
+                <td>
+                    <a href="/masters/categories/edit/{{ c.pk }}/" class="btn-sm-icon btn-edit" title="Edit"><i class="fa fa-pencil"></i></a>
+                    <a href="/masters/categories/delete/{{ c.pk }}/" class="btn-sm-icon btn-delete" title="Delete" onclick="return confirm('Delete?')"><i class="fa fa-trash"></i></a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" class="text-center text-muted py-4">No categories found</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

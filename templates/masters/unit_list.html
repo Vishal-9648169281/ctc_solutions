@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% block title %}Units{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h5><i class="fa fa-ruler me-2"></i>Units</h5>
+        <div class="page-breadcrumb">Masters &rsaquo; Units</div>
+    </div>
+    <a href="/masters/units/add/" class="btn-ctc"><i class="fa fa-plus me-1"></i>Add Unit</a>
+</div>
+<div class="ctc-card">
+    <div class="ctc-card-header"><span><i class="fa fa-list me-2"></i>All Units</span></div>
+    <div class="ctc-card-body p-0">
+        <table class="table table-hover mb-0 ctc-datatable">
+            <thead><tr><th>#</th><th>Name</th><th>Short Name</th><th>Actions</th></tr></thead>
+            <tbody>
+            {% for u in units %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td><strong>{{ u.name }}</strong></td>
+                <td>{{ u.short_name }}</td>
+                <td>
+                    <a href="/masters/units/edit/{{ u.pk }}/" class="btn-sm-icon btn-edit" title="Edit"><i class="fa fa-pencil"></i></a>
+                    <a href="/masters/units/delete/{{ u.pk }}/" class="btn-sm-icon btn-delete" title="Delete" onclick="return confirm('Delete?')"><i class="fa fa-trash"></i></a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" class="text-center text-muted py-4">No units found</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

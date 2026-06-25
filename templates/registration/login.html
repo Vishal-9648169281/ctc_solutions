@@ -1,0 +1,156 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login &mdash; CTC Solution</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #1a237e 0%, #283593 50%, #1565c0 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', sans-serif;
+        }
+        .login-wrapper {
+            width: 100%;
+            max-width: 440px;
+            padding: 16px;
+        }
+        .login-card {
+            background: #ffffff;
+            border-radius: 20px;
+            padding: 44px 40px 36px;
+            box-shadow: 0 24px 64px rgba(0,0,0,0.35);
+        }
+        .login-logo {
+            text-align: center;
+            margin-bottom: 28px;
+        }
+        .login-logo .logo-icon {
+            width: 72px;
+            height: 72px;
+            background: linear-gradient(135deg, #1a237e, #1565c0);
+            border-radius: 18px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 14px;
+        }
+        .login-logo .logo-icon i {
+            font-size: 2rem;
+            color: #fff;
+        }
+        .login-logo h4 {
+            color: #1a237e;
+            font-weight: 700;
+            font-size: 1.1rem;
+            margin-bottom: 4px;
+            letter-spacing: 0.3px;
+        }
+        .login-logo p {
+            color: #78909c;
+            font-size: 0.8rem;
+            margin: 0;
+        }
+        .form-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #546e7a;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+        .input-group-text {
+            background: #f0f4ff;
+            border-color: #dde3f0;
+            color: #1a237e;
+        }
+        .form-control {
+            border-color: #dde3f0;
+            padding: 10px 14px;
+            font-size: 0.92rem;
+        }
+        .form-control:focus {
+            border-color: #1a237e;
+            box-shadow: 0 0 0 3px rgba(26,35,126,0.12);
+        }
+        .btn-login {
+            background: linear-gradient(135deg, #1a237e, #1565c0);
+            color: #fff;
+            border: none;
+            padding: 13px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            width: 100%;
+            letter-spacing: 0.3px;
+            transition: opacity 0.2s;
+        }
+        .btn-login:hover { opacity: 0.9; color: #fff; }
+        .btn-login:active { opacity: 0.8; color: #fff; }
+        .footer-text {
+            text-align: center;
+            color: #90a4ae;
+            font-size: 0.72rem;
+            margin-top: 22px;
+            line-height: 1.6;
+        }
+        .divider {
+            border-top: 1px solid #eef1f8;
+            margin: 24px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-wrapper">
+        <div class="login-card">
+            <div class="login-logo">
+                <div class="logo-icon">
+                    <i class="fa fa-desktop"></i>
+                </div>
+                <h4>CHANDIGARH TEAM COMPUTERS</h4>
+                <p>CTC Solution &mdash; Business Management System</p>
+            </div>
+
+            {% if form.errors %}
+            <div class="alert alert-danger py-2 small d-flex align-items-center gap-2">
+                <i class="fa fa-exclamation-circle"></i> Invalid username or password.
+            </div>
+            {% endif %}
+
+            <form method="post">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label">Username</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fa fa-user"></i></span>
+                        <input type="text" name="username" class="form-control" placeholder="Enter username" required autofocus>
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <label class="form-label">Password</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fa fa-lock"></i></span>
+                        <input type="password" name="password" class="form-control" placeholder="Enter password" required>
+                    </div>
+                </div>
+                <button type="submit" class="btn-login">
+                    <i class="fa fa-sign-in-alt me-2"></i>Login to CTC Solution
+                </button>
+            </form>
+
+            <div class="divider"></div>
+            <div class="footer-text">
+                Sector 22-B, Chandigarh &nbsp;|&nbsp; Ph: 7986810335<br>
+                &copy; 2026 Chandigarh Team Computers
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

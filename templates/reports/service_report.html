@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+{% block title %}Service Report{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h5><i class="fa fa-phone-alt me-2"></i>Service Report</h5>
+        <div class="page-breadcrumb">Reports &rsaquo; Service</div>
+    </div>
+    <a href="/reports/" class="btn-ctc-outline"><i class="fa fa-arrow-left me-1"></i>Back</a>
+</div>
+<div class="ctc-card mb-3">
+    <div class="ctc-card-body py-3">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label fw-semibold small">From Date</label>
+                <input type="date" name="from_date" value="{{ from_date }}" class="form-control form-control-sm">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-semibold small">To Date</label>
+                <input type="date" name="to_date" value="{{ to_date }}" class="form-control form-control-sm">
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn-ctc w-100"><i class="fa fa-filter me-1"></i>Filter</button>
+            </div>
+        </form>
+    </div>
+</div>
+<div class="row g-3 mb-3">
+    {% for s in summary %}
+    <div class="col-md-3">
+        <div class="stat-card" style="background:linear-gradient(135deg,#1565c0,#1976d2)">
+            <div class="number">{{ s.count }}</div>
+            <div class="label">{{ s.status|title }}</div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+<div class="ctc-card">
+    <div class="ctc-card-header"><span><i class="fa fa-list me-2"></i>Service Calls</span></div>
+    <div class="ctc-card-body p-0">
+        <table class="table table-hover mb-0 ctc-datatable">
+            <thead><tr><th>#</th><th>Call No</th><th>Customer</th><th>Issue</th><th>Date</th><th>Priority</th><th>Status</th><th>Charges</th></tr></thead>
+            <tbody>
+            {% for call in calls %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td>{{ call.call_number }}</td>
+                <td>{{ call.customer.name }}</td>
+                <td>{{ call.issue_type }}</td>
+                <td>{{ call.call_date }}</td>
+                <td>{{ call.get_priority_display }}</td>
+                <td>
+                    {% if call.status == 'open' %}<span class="badge-danger">Open</span>
+                    {% elif call.status == 'inprogress' %}<span class="badge-warning">In Progress</span>
+                    {% elif call.status == 'resolved' %}<span class="badge-success">Resolved</span>
+                    {% else %}<span class="badge-secondary">Closed</span>{% endif %}
+                </td>
+                <td>Rs.{{ call.charges }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="8" class="text-center text-muted py-4">No records found</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

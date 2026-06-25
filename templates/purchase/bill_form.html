@@ -1,0 +1,400 @@
+{% extends 'base.html' %}
+{% block title %}New Purchase Bill{% endblock %}
+{% block extra_css %}
+<style>
+.grid-table th{background:#1e3a8a;color:#fff;font-size:.72rem;padding:7px 10px}
+.grid-table td{font-size:.82rem;padding:6px 10px;vertical-align:middle}
+.entry-row label{font-size:.72rem;font-weight:600;color:#475569;margin-bottom:3px;display:block}
+.entry-row .form-control,.entry-row .form-select{font-size:.82rem;padding:5px 8px;height:32px}
+.totals-box td{padding:5px 12px;font-size:.84rem}
+.totals-box tr.grand td{background:#1e3a8a;color:#fff;font-weight:700}
+.quick-add-btn{font-size:.7rem;padding:2px 7px;border-radius:4px;border:1px solid #3b82f6;color:#3b82f6;background:#eff6ff;cursor:pointer;white-space:nowrap}
+.quick-add-btn:hover{background:#3b82f6;color:#fff}
+.manual-desc{font-size:.8rem;border:1.5px dashed #94a3b8;background:#fffbeb;height:32px;margin-top:4px;border-radius:4px;padding:4px 8px;width:100%}
+</style>
+{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <h5><i class="fa fa-cart-plus me-2"></i>New Purchase Bill</h5>
+    <div class="page-breadcrumb">Purchase &rsaquo; <span>New Bill</span></div>
+  </div>
+  <a href="/purchase/bills/" class="btn-ctc-outline"><i class="fa fa-arrow-left me-1"></i>Back</a>
+</div>
+
+<form method="post" id="billForm">
+  {% csrf_token %}
+  <input type="hidden" id="itemsJson" name="items_json">
+
+  <!-- Header -->
+  <div class="ctc-card mb-3">
+    <div class="ctc-card-header"><h6><i class="fa fa-circle-info"></i>Bill Details</h6></div>
+    <div class="ctc-card-body">
+      <div class="row g-3">
+        <div class="col-md-3">
+          <label class="form-label-sm">Bill No.</label>
+          <input type="text" class="form-control form-control-sm" value="{{ bill_number }}" readonly style="background:#f8fafc;font-weight:700;color:#1e40af">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label-sm">Vendor <span class="text-danger">*</span>
+            <button type="button" class="quick-add-btn ms-1" onclick="openQuickVendor()"><i class="fa fa-plus"></i> New</button>
+          </label>
+          <select name="vendor" id="vendorSelect" class="form-select form-select-sm" required>
+            <option value="">-- Select Vendor --</option>
+            {% for v in vendors %}
+            <option value="{{ v.pk }}">{{ v.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label-sm">Bill Date <span class="text-danger">*</span></label>
+          <input type="date" name="bill_date" class="form-control form-control-sm" value="{{ today }}" required>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label-sm">Due Date</label>
+          <input type="date" name="due_date" class="form-control form-control-sm">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Entry Row -->
+  <div class="ctc-card mb-3">
+    <div class="ctc-card-header"><h6><i class="fa fa-plus-circle"></i>Item Entry</h6></div>
+    <div class="ctc-card-body">
+      <div class="row g-2 align-items-end entry-row">
+        <div class="col-md-4">
+          <label>Product
+            <button type="button" class="quick-add-btn ms-1" onclick="openQuickProduct()"><i class="fa fa-plus"></i> New</button>
+          </label>
+          <select id="entry_product" class="form-select form-select-sm">
+            <option value="">-- Select Product --</option>
+            {% for p in products %}
+            <option value="{{ p.pk }}" data-name="{{ p.name }}" data-hsn="{{ p.hsn_code|default:'' }}" data-unit="{{ p.unit.name|default:'' }}" data-rate="{{ p.purchase_price }}" data-tax="{{ p.tax_rate }}">{{ p.name }}</option>
+            {% endfor %}
+          </select>
+          <input type="text" id="entry_desc" class="manual-desc" placeholder="or type description manually (for services not in master)">
+        </div>
+        <div class="col-md-1">
+          <label>Qty</label>
+          <input type="number" id="entry_qty" class="form-control form-control-sm" value="1" step="0.01">
+        </div>
+        <div class="col-md-2">
+          <label>Rate</label>
+          <input type="number" id="entry_rate" class="form-control form-control-sm" value="0" step="0.01">
+        </div>
+        <div class="col-md-1">
+          <label>Dis%</label>
+          <input type="number" id="entry_dis" class="form-control form-control-sm" value="0" step="0.01">
+        </div>
+        <div class="col-md-2">
+          <label>Tax%</label>
+          <input type="number" id="entry_tax" class="form-control form-control-sm" value="18" step="0.01">
+        </div>
+        <div class="col-md-2">
+          <button type="button" class="btn-ctc w-100" onclick="addItemToGrid()" style="height:32px;font-size:.82rem"><i class="fa fa-check me-1"></i>OK</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Grid -->
+  <div class="ctc-card mb-3">
+    <div class="table-responsive">
+      <table class="table grid-table mb-0" id="itemsGrid">
+        <thead>
+          <tr>
+            <th>#</th><th>Product</th><th>HSN</th><th>Unit</th><th>Qty</th><th>Rate</th><th>Dis%</th><th>Tax%</th><th>Amount</th><th></th>
+          </tr>
+        </thead>
+        <tbody id="itemsGridBody">
+          <tr><td colspan="10" class="text-center text-muted py-4" style="font-size:.85rem"><i class="fa fa-arrow-up me-1"></i>Add items using the entry row above</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Notes + Totals -->
+  <div class="ctc-card mb-3">
+    <div class="ctc-card-body">
+      <div class="row g-4">
+        <div class="col-md-6">
+          <label class="form-label-sm">Notes</label>
+          <textarea name="notes" class="form-control form-control-sm" rows="4" placeholder="Any additional notes..."></textarea>
+        </div>
+        <div class="col-md-6">
+          <table class="table totals-box mb-0" style="border-radius:10px;overflow:hidden;border:1px solid #e2e8f0">
+            <tr style="background:#f8fafc"><td>Total Qty</td><td class="text-end fw-600" id="totalQty">0</td></tr>
+            <tr style="background:#f8fafc"><td>Subtotal</td><td class="text-end fw-600" id="subtotal">0.00</td></tr>
+            <tr style="background:#f8fafc"><td>Discount Amt</td><td class="text-end fw-600 text-danger" id="disTotal">0.00</td></tr>
+            <tr style="background:#f8fafc"><td>Tax Amt</td><td class="text-end fw-600 text-success" id="taxTotal">0.00</td></tr>
+            <tr style="background:#f8fafc">
+              <td>Extra Discount</td>
+              <td class="text-end"><input type="number" name="discount" id="discount" class="form-control form-control-sm d-inline" value="0" style="width:110px" onchange="calcGridTotal()"></td>
+            </tr>
+            <tr class="grand"><td><strong>NET AMOUNT</strong></td><td class="text-end fs-5"><strong id="grandTotal">0.00</strong></td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="d-flex gap-2 mb-4">
+    <button type="submit" class="btn-ctc"><i class="fa fa-save me-1"></i>Confirm</button>
+    <a href="/purchase/bills/" class="btn-ctc-outline">Exit</a>
+  </div>
+</form>
+
+<!-- Quick Add Vendor Modal -->
+<div class="modal fade" id="quickVendorModal" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content" style="border-radius:12px;overflow:hidden">
+      <div class="modal-header" style="background:linear-gradient(135deg,#1e40af,#1d4ed8);color:#fff;padding:12px 16px">
+        <h6 class="modal-title mb-0"><i class="fa fa-truck-ramp-box me-2"></i>Quick Add Vendor</h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-3">
+        <div class="mb-2"><label class="form-label-sm">Name <span class="text-danger">*</span></label>
+          <input type="text" id="qv_name" class="form-control form-control-sm" placeholder="Vendor name"></div>
+        <div class="mb-2"><label class="form-label-sm">Phone</label>
+          <input type="text" id="qv_phone" class="form-control form-control-sm"></div>
+        <div class="mb-2"><label class="form-label-sm">GSTIN</label>
+          <input type="text" id="qv_gstin" class="form-control form-control-sm"></div>
+        <div class="mb-2"><label class="form-label-sm">City</label>
+          <input type="text" id="qv_city" class="form-control form-control-sm"></div>
+        <div id="qv_error" class="text-danger small d-none"></div>
+      </div>
+      <div class="modal-footer p-2">
+        <button type="button" class="btn-ctc w-100" onclick="saveQuickVendor()"><i class="fa fa-save me-1"></i>Save &amp; Select</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Quick Add Product Modal -->
+<div class="modal fade" id="quickProductModal" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content" style="border-radius:12px;overflow:hidden">
+      <div class="modal-header" style="background:linear-gradient(135deg,#059669,#047857);color:#fff;padding:12px 16px">
+        <h6 class="modal-title mb-0"><i class="fa fa-box-open me-2"></i>Quick Add Product</h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-3">
+        <div class="mb-2"><label class="form-label-sm">Name <span class="text-danger">*</span></label>
+          <input type="text" id="qp_name" class="form-control form-control-sm" placeholder="Product/service name"></div>
+        <div class="mb-2"><label class="form-label-sm">HSN Code</label>
+          <input type="text" id="qp_hsn" class="form-control form-control-sm"></div>
+        <div class="mb-2"><label class="form-label-sm">Unit</label>
+          <input type="text" id="qp_unit" class="form-control form-control-sm" placeholder="e.g. Pcs, Nos, Hrs"></div>
+        <div class="mb-2"><label class="form-label-sm">Purchase Price</label>
+          <input type="number" id="qp_price" class="form-control form-control-sm" value="0" step="0.01"></div>
+        <div class="mb-2"><label class="form-label-sm">Tax%</label>
+          <input type="number" id="qp_tax" class="form-control form-control-sm" value="18"></div>
+        <div id="qp_error" class="text-danger small d-none"></div>
+      </div>
+      <div class="modal-footer p-2">
+        <button type="button" class="btn-ctc w-100" style="background:linear-gradient(135deg,#059669,#047857)" onclick="saveQuickProduct()"><i class="fa fa-save me-1"></i>Save &amp; Select</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let gridItems = [];
+
+function addItemToGrid() {
+    const productSel = document.getElementById('entry_product');
+    const opt = productSel.options[productSel.selectedIndex];
+    const manualDesc = document.getElementById('entry_desc').value.trim();
+    if (!productSel.value && !manualDesc) { alert('Please select a product or type a description'); productSel.focus(); return; }
+
+    const qty = parseFloat(document.getElementById('entry_qty').value) || 0;
+    const rate = parseFloat(document.getElementById('entry_rate').value) || 0;
+    const dis = parseFloat(document.getElementById('entry_dis').value) || 0;
+    const tax = parseFloat(document.getElementById('entry_tax').value) || 0;
+
+    const grossAmt = qty * rate;
+    const disAmt = grossAmt * dis / 100;
+    const afterDis = grossAmt - disAmt;
+    const taxAmt = afterDis * tax / 100;
+    const finalAmt = afterDis + taxAmt;
+
+    const itemName = manualDesc || (opt && opt.dataset.name) || '';
+    gridItems.push({
+        product_id: productSel.value || '',
+        name: itemName,
+        description: manualDesc,
+        hsn: (opt && opt.dataset.hsn) || '',
+        unit: (opt && opt.dataset.unit) || '',
+        qty: qty, rate: rate, dis: dis, tax: tax,
+        dis_amt: disAmt, tax_amt: taxAmt, amount: finalAmt
+    });
+
+    renderGrid();
+
+    productSel.value = '';
+    document.getElementById('entry_desc').value = '';
+    document.getElementById('entry_qty').value = 1;
+    document.getElementById('entry_rate').value = 0;
+    document.getElementById('entry_dis').value = 0;
+    document.getElementById('entry_tax').value = 18;
+    productSel.focus();
+}
+
+function removeGridItem(idx) {
+    gridItems.splice(idx, 1);
+    renderGrid();
+}
+
+function renderGrid() {
+    const tbody = document.getElementById('itemsGridBody');
+    tbody.innerHTML = '';
+    if (gridItems.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="10" class="text-center text-muted py-4" style="font-size:.85rem"><i class="fa fa-arrow-up me-1"></i>Add items using the entry row above</td></tr>';
+    } else {
+        gridItems.forEach((item, idx) => {
+            tbody.insertAdjacentHTML('beforeend', `<tr>
+                <td>${idx + 1}</td>
+                <td><strong>${item.name}</strong></td>
+                <td><span class="badge-info">${item.hsn || '-'}</span></td>
+                <td>${item.unit || '-'}</td>
+                <td>${item.qty}</td>
+                <td>${item.rate.toFixed(2)}</td>
+                <td>${item.dis}%</td>
+                <td>${item.tax}%</td>
+                <td><strong>${item.amount.toFixed(2)}</strong></td>
+                <td><button type="button" class="btn-sm-icon btn-delete" onclick="removeGridItem(${idx})"><i class="fa fa-trash"></i></button></td>
+            </tr>`);
+        });
+    }
+    document.getElementById('itemsJson').value = JSON.stringify(gridItems);
+    calcGridTotal();
+}
+
+function calcGridTotal() {
+    let totalQty = 0, subtotal = 0, disTotal = 0, taxTotal = 0;
+    gridItems.forEach(item => {
+        totalQty += item.qty;
+        subtotal += item.qty * item.rate;
+        disTotal += item.dis_amt;
+        taxTotal += item.tax_amt;
+    });
+    const extraDiscount = parseFloat(document.getElementById('discount').value) || 0;
+    document.getElementById('totalQty').textContent = totalQty;
+    document.getElementById('subtotal').textContent = subtotal.toFixed(2);
+    document.getElementById('disTotal').textContent = disTotal.toFixed(2);
+    document.getElementById('taxTotal').textContent = taxTotal.toFixed(2);
+    document.getElementById('grandTotal').textContent = (subtotal - disTotal + taxTotal - extraDiscount).toFixed(2);
+}
+
+function setupEntryRowEnterFlow() {
+    const order = ['entry_product', 'entry_qty', 'entry_rate', 'entry_dis', 'entry_tax'];
+    order.forEach((id, idx) => {
+        const el = document.getElementById(id);
+        el.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                if (idx === order.length - 1) {
+                    addItemToGrid();
+                } else {
+                    const next = document.getElementById(order[idx + 1]);
+                    next.focus();
+                    if (next.select) next.select();
+                }
+            }
+        });
+    });
+}
+document.addEventListener('DOMContentLoaded', setupEntryRowEnterFlow);
+
+document.getElementById('billForm').addEventListener('submit', function(e) {
+    if (gridItems.length === 0) {
+        e.preventDefault();
+        alert('Please add at least one item before saving.');
+    }
+});
+
+// ── entry_product auto-fill on change ──────────────────────
+document.getElementById('entry_product').addEventListener('change', function() {
+    const opt = this.options[this.selectedIndex];
+    if (opt.value) {
+        document.getElementById('entry_rate').value = opt.dataset.rate || 0;
+        document.getElementById('entry_tax').value  = opt.dataset.tax  || 18;
+        document.getElementById('entry_desc').value = '';
+        document.getElementById('entry_qty').focus();
+    }
+});
+
+// ── Quick Add Vendor ────────────────────────────────────────
+const _qvModal = new bootstrap.Modal(document.getElementById('quickVendorModal'));
+function openQuickVendor() {
+    ['qv_name','qv_phone','qv_gstin','qv_city'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('qv_error').classList.add('d-none');
+    _qvModal.show();
+    setTimeout(() => document.getElementById('qv_name').focus(), 400);
+}
+function saveQuickVendor() {
+    const name = document.getElementById('qv_name').value.trim();
+    if (!name) { document.getElementById('qv_error').textContent='Name is required'; document.getElementById('qv_error').classList.remove('d-none'); return; }
+    const fd = new FormData();
+    fd.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+    fd.append('name',  name);
+    fd.append('phone', document.getElementById('qv_phone').value);
+    fd.append('gstin', document.getElementById('qv_gstin').value);
+    fd.append('city',  document.getElementById('qv_city').value);
+    fetch('/masters/quick-add/vendor/', {method:'POST', body:fd})
+    .then(r=>r.json()).then(data=>{
+        if (!data.ok) { document.getElementById('qv_error').textContent=data.error; document.getElementById('qv_error').classList.remove('d-none'); return; }
+        const sel = document.getElementById('vendorSelect');
+        sel.add(new Option(data.name, data.pk, true, true));
+        sel.value = data.pk;
+        _qvModal.hide();
+    });
+}
+document.getElementById('quickVendorModal').addEventListener('keydown', e => { if(e.key==='Enter') saveQuickVendor(); });
+
+// ── Quick Add Product ───────────────────────────────────────
+const _qpModal = new bootstrap.Modal(document.getElementById('quickProductModal'));
+function openQuickProduct() {
+    ['qp_name','qp_hsn','qp_unit'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('qp_price').value = 0;
+    document.getElementById('qp_tax').value = 18;
+    document.getElementById('qp_error').classList.add('d-none');
+    _qpModal.show();
+    setTimeout(() => document.getElementById('qp_name').focus(), 400);
+}
+function saveQuickProduct() {
+    const name = document.getElementById('qp_name').value.trim();
+    if (!name) { document.getElementById('qp_error').textContent='Name is required'; document.getElementById('qp_error').classList.remove('d-none'); return; }
+    const fd = new FormData();
+    fd.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+    fd.append('name',         name);
+    fd.append('hsn_code',     document.getElementById('qp_hsn').value);
+    fd.append('unit',         document.getElementById('qp_unit').value);
+    fd.append('sale_price',   document.getElementById('qp_price').value);
+    fd.append('purchase_price', document.getElementById('qp_price').value);
+    fd.append('tax_rate',     document.getElementById('qp_tax').value);
+    fetch('/masters/quick-add/product/', {method:'POST', body:fd})
+    .then(r=>r.json()).then(data=>{
+        if (!data.ok) { document.getElementById('qp_error').textContent=data.error; document.getElementById('qp_error').classList.remove('d-none'); return; }
+        const sel = document.getElementById('entry_product');
+        const opt = new Option(data.name, data.pk, true, true);
+        opt.dataset.name = data.name;
+        opt.dataset.hsn  = data.hsn_code || '';
+        opt.dataset.unit = data.unit || '';
+        opt.dataset.rate = data.sale_price || 0;
+        opt.dataset.tax  = data.tax_rate || 18;
+        sel.add(opt);
+        sel.value = data.pk;
+        document.getElementById('entry_rate').value = data.sale_price || 0;
+        document.getElementById('entry_tax').value  = data.tax_rate || 18;
+        _qpModal.hide();
+    });
+}
+document.getElementById('quickProductModal').addEventListener('keydown', e => { if(e.key==='Enter') saveQuickProduct(); });
+</script>
+{% endblock %}

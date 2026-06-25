@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+{% block title %}Invoice {{ invoice.invoice_number }}{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h5><i class="fa fa-file-invoice-dollar me-2"></i>Invoice &mdash; {{ invoice.invoice_number }}</h5>
+        <div class="page-breadcrumb">Sales &rsaquo; Invoices &rsaquo; {{ invoice.invoice_number }}</div>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="/sales/invoices/" class="btn-ctc-outline"><i class="fa fa-arrow-left me-1"></i>Back</a>
+        <a href="/sales/invoices/{{ invoice.pk }}/pdf/" target="_blank" class="btn-ctc-outline"><i class="fa fa-eye me-1"></i>View PDF</a>
+        <a href="/sales/invoices/{{ invoice.pk }}/edit/" class="btn-ctc-outline"><i class="fa fa-pencil me-1"></i>Modify</a>
+        <button onclick="printInvoicePdf()" class="btn-ctc"><i class="fa fa-print me-1"></i>Print</button>
+    </div>
+</div>
+<div class="ctc-card">
+    <div class="ctc-card-body p-4">
+        <div class="text-center mb-4">
+            <h4 class="text-primary fw-bold">CHANDIGARH TEAM COMPUTERS</h4>
+            <p class="text-muted mb-0">Sector 22-B, Chandigarh | Ph: 7986810335</p>
+            <h5 class="mt-2">
+                {% if invoice.invoice_type == 'gst' %}TAX INVOICE
+                {% elif invoice.invoice_type == 'proforma' %}PROFORMA INVOICE
+                {% else %}EXPORT INVOICE{% endif %}
+            </h5>
+        </div>
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <strong>Bill To:</strong>
+                <p class="mt-1">{{ invoice.customer.name }}<br>
+                {{ invoice.customer.address }}<br>
+                {{ invoice.customer.city }} {{ invoice.customer.pincode }}<br>
+                GSTIN: {{ invoice.customer.gstin|default:"-" }}</p>
+            </div>
+            <div class="col-md-6 text-md-end">
+                <p><strong>Invoice No:</strong> {{ invoice.invoice_number }}</p>
+                <p><strong>Date:</strong> {{ invoice.invoice_date }}</p>
+                <p><strong>Due Date:</strong> {{ invoice.due_date|default:"-" }}</p>
+                <p><strong>Status:</strong>
+                {% if invoice.status == 'paid' %}<span class="badge-success">Paid</span>
+                {% elif invoice.status == 'partial' %}<span class="badge-warning">Partial</span>
+                {% else %}<span class="badge-danger">Pending</span>{% endif %}</p>
+            </div>
+        </div>
+        <table class="table table-bordered">
+            <thead class="table-primary">
+                <tr><th>#</th><th>Product</th><th>HSN</th><th>Qty</th><th>Rate</th><th>Tax%</th><th>Tax Amt</th><th>Amount</th></tr>
+            </thead>
+            <tbody>
+            {% for item in items %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td>{{ item.product.name }}</td>
+                <td>{{ item.product.hsn_code|default:"-" }}</td>
+                <td>{{ item.quantity }}</td>
+                <td>Rs.{{ item.rate }}</td>
+                <td>{{ item.tax_rate }}%</td>
+                <td>Rs.{{ item.tax_amount }}</td>
+                <td>Rs.{{ item.amount }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr><td colspan="7" class="text-end"><strong>Subtotal</strong></td><td>Rs.{{ invoice.subtotal }}</td></tr>
+                <tr><td colspan="7" class="text-end"><strong>Tax</strong></td><td>Rs.{{ invoice.tax_amount }}</td></tr>
+                <tr><td colspan="7" class="text-end"><strong>Discount</strong></td><td>Rs.{{ invoice.discount }}</td></tr>
+                <tr class="table-primary"><td colspan="7" class="text-end"><strong>Grand Total</strong></td><td><strong>Rs.{{ invoice.total_amount }}</strong></td></tr>
+                <tr><td colspan="7" class="text-end">Paid</td><td>Rs.{{ invoice.paid_amount }}</td></tr>
+                <tr class="table-warning"><td colspan="7" class="text-end"><strong>Balance Due</strong></td><td><strong>Rs.{{ invoice.balance_due }}</strong></td></tr>
+            </tfoot>
+        </table>
+        {% if invoice.notes %}<p><strong>Notes:</strong> {{ invoice.notes }}</p>{% endif %}
+        <div class="mt-4 text-center text-muted small">
+            <p>Thank you for your business!</p>
+        </div>
+    </div>
+</div>
+<script>
+function printInvoicePdf() {
+    window.open('/sales/invoices/{{ invoice.pk }}/pdf/', '_blank');
+}
+</script>
+{% endblock %}

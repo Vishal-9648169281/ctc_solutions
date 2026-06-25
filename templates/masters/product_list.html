@@ -1,0 +1,168 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Item Master{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h5><i class="fa fa-box me-2"></i>Item Master</h5>
+        <div class="page-breadcrumb">Masters &rsaquo; Items</div>
+    </div>
+    <div class="d-flex gap-2">
+        <button class="btn-ctc" onclick="openM('add')"><i class="fa fa-plus me-1"></i>Add</button>
+        <button class="btn-ctc-outline" onclick="openM('modify')"><i class="fa fa-pencil me-1"></i>Modify</button>
+        <button class="btn-ctc-outline" onclick="delRec()"><i class="fa fa-trash me-1"></i>Delete</button>
+    </div>
+</div>
+<div class="ctc-card">
+    <div class="ctc-card-header"><span><i class="fa fa-list me-2"></i>All Items</span></div>
+    <div class="ctc-card-body p-0">
+        <table class="table table-hover mb-0 ctc-datatable" id="tb">
+            <thead><tr>
+                <th>Item Description</th><th>Company</th><th>HSN</th><th>Unit</th><th>Rate</th><th>MRP</th><th>GST%</th><th>Code</th>
+            </tr></thead>
+            <tbody>
+            {% for p in products %}
+            <tr style="cursor:pointer" onclick="selRow(this,'{{ p.pk }}','{{ p.name|escapejs }}','{{ p.category.name|default:''|escapejs }}','{{ p.hsn_code|escapejs }}','{{ p.unit.short_name|default:''|escapejs }}','{{ p.sale_price }}','{{ p.sale_price }}','{{ p.tax_rate }}','{{ p.code|escapejs }}','{{ p.purchase_price }}','{{ p.opening_stock }}')">
+                <td>{{ p.name }}</td><td>{{ p.category.name|default:'' }}</td>
+                <td>{{ p.hsn_code }}</td><td>{{ p.unit.short_name|default:'' }}</td>
+                <td>{{ p.sale_price }}</td><td>{{ p.sale_price }}</td>
+                <td>{{ p.tax_rate }}.00</td><td>{{ p.code }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ADD/MODIFY MODAL -->
+<div class="modal fade" id="itemModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header" style="background:linear-gradient(135deg,#1a237e,#1565c0);color:white">
+                <h5 class="modal-title" id="modalTitle">Add Item</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" id="iForm">
+                {% csrf_token %}
+                <input type="hidden" name="_pk" id="f_pk">
+                <input type="hidden" name="_action" id="f_ac" value="add">
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold small">Item Code</label>
+                            <input type="text" name="code" id="f_code" class="form-control" readonly>
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label fw-semibold small">Item Name</label>
+                            <input type="text" name="name" id="f_name" class="form-control">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small">Company / Category</label>
+                            <select name="category" id="f_cat" class="form-select">
+                                <option value="">--</option>
+                                {% for c in categories %}<option value="{{ c.pk }}">{{ c.name }}</option>{% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold small">HSN Code</label>
+                            <input type="text" name="hsn_code" id="f_hsn" class="form-control">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold small">GST %</label>
+                            <input type="number" name="tax_rate" id="f_gst" class="form-control" value="0.00" step="0.01">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold small">Unit</label>
+                            <select name="unit" id="f_unit" class="form-select">
+                                <option value="">--</option>
+                                {% for u in units %}<option value="{{ u.pk }}">{{ u.short_name }}</option>{% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold small">MRP</label>
+                            <input type="number" name="mrp" id="f_mrp" class="form-control" step="0.01" value="0.00">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold small">Sale Rate</label>
+                            <input type="number" name="sale_price" id="f_rate" class="form-control" step="0.01" value="0.00">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold small">Purchase Rate</label>
+                            <input type="number" name="purchase_price" id="f_pur" class="form-control" step="0.01" value="0.00">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold small">Qty Per Box</label>
+                            <input type="number" name="qty_per_box" id="f_qpb" class="form-control" value="0">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold small">Opening Stock</label>
+                            <input type="number" name="opening_stock" id="f_opst" class="form-control" value="0">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold small">Cess %</label>
+                            <input type="number" name="cess" id="f_cess" class="form-control" value="0.00">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold small">Scheme %</label>
+                            <input type="number" name="scheme" id="f_scheme" class="form-control" value="0.00">
+                        </div>
+                        <div class="col-md-3 d-flex align-items-end">
+                            <div class="form-check">
+                                <input type="checkbox" name="expiry" id="f_exp" class="form-check-input">
+                                <label class="form-check-label fw-semibold" for="f_exp">Expiry</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn-ctc">Confirm</button>
+                    <button type="button" class="btn-ctc-outline" data-bs-dismiss="modal">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+let sP=null,sD={};
+const itemModal = new bootstrap.Modal(document.getElementById('itemModal'));
+function selRow(tr,pk,nm,cat,hsn,unit,rate,mrp,gst,code,pur,opst){
+    document.querySelectorAll('#tb tbody tr').forEach(r=>r.classList.remove('table-active'));
+    tr.classList.add('table-active');sP=pk;sD={pk,nm,cat,hsn,unit,rate,mrp,gst,code,pur,opst};
+}
+function openM(m){
+    const title=document.getElementById('modalTitle'),f=document.getElementById('iForm');
+    if(m==='add'){
+        title.textContent='Add Item';f.action="{% url 'product_add' %}";
+        document.getElementById('f_pk').value='';document.getElementById('f_ac').value='add';
+        document.getElementById('f_code').value='AUTO';
+        ['f_name','f_hsn'].forEach(i=>document.getElementById(i).value='');
+        ['f_gst','f_mrp','f_rate','f_pur','f_cess','f_scheme'].forEach(i=>document.getElementById(i).value='0.00');
+        ['f_qpb','f_opst'].forEach(i=>document.getElementById(i).value='0');
+        document.getElementById('f_cat').value='';document.getElementById('f_unit').value='';
+        document.getElementById('f_exp').checked=false;setRO(false);
+    }else if(m==='modify'){
+        if(!sP){alert('Select a record!');return;}
+        title.textContent='Modify Item';
+        f.action="{% url 'product_edit' 0 %}".replace('/0/','/'+sP+'/');
+        document.getElementById('f_pk').value=sP;document.getElementById('f_ac').value='edit';
+        document.getElementById('f_code').value=sD.code;document.getElementById('f_name').value=sD.nm;
+        document.getElementById('f_hsn').value=sD.hsn;document.getElementById('f_gst').value=sD.gst;
+        document.getElementById('f_rate').value=sD.rate;document.getElementById('f_mrp').value=sD.mrp;
+        document.getElementById('f_pur').value=sD.pur;document.getElementById('f_opst').value=sD.opst;
+        setRO(false);
+    }
+    itemModal.show();
+}
+function setRO(v){document.querySelectorAll('#iForm input,#iForm select').forEach(el=>{if(!['_pk','_action'].includes(el.name))el.readOnly=v;});}
+function delRec(){
+    if(!sP){alert('Select a record!');return;}
+    if(confirm('Delete: '+sD.nm+'?')){
+        const f=document.createElement('form');f.method='post';
+        f.action="{% url 'product_delete' 0 %}".replace('/0/','/'+sP+'/');
+        f.innerHTML='{% csrf_token %}';document.body.appendChild(f);f.submit();
+    }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+{% block title %}Credit Note{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h5><i class="fa fa-file-invoice me-2"></i>Credit Note / Debit Note</h5>
+        <div class="page-breadcrumb">Credit Note</div>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="/credit-note/add/?type={{ note_type }}" class="btn-ctc"><i class="fa fa-plus me-1"></i>Add</a>
+        <button class="btn-ctc-outline" onclick="vfpAction('modify')"><i class="fa fa-pencil me-1"></i>Modify</button>
+        <button class="btn-ctc-outline" onclick="vfpAction('delete')"><i class="fa fa-trash me-1"></i>Delete</button>
+        <button class="btn-ctc-outline" onclick="vfpAction('view')"><i class="fa fa-eye me-1"></i>View</button>
+        <a href="/dashboard/" class="btn-ctc-outline"><i class="fa fa-sign-out-alt me-1"></i>Exit</a>
+    </div>
+</div>
+<div class="ctc-card mb-3">
+    <div class="ctc-card-body py-2">
+        <div class="d-flex gap-2">
+            <a href="/credit-note/?type=customer" class="btn-ctc-outline {% if note_type == 'customer' %}active{% endif %}">Customer Credit Note</a>
+            <a href="/credit-note/?type=vendor" class="btn-ctc-outline {% if note_type == 'vendor' %}active{% endif %}">Vendor Debit Note</a>
+        </div>
+    </div>
+</div>
+<div class="ctc-card">
+    <div class="ctc-card-header">
+        <span>{% if note_type == 'customer' %}Customer Credit Notes{% else %}Vendor Debit Notes{% endif %} ({{ notes.count }})</span>
+    </div>
+    <div class="ctc-card-body p-0">
+        <table class="table table-hover mb-0" id="noteListTable">
+            <thead>
+                <tr>
+                    <th>#</th><th>Note No.</th><th>Date</th>
+                    <th>{% if note_type == 'customer' %}Customer{% else %}Vendor{% endif %}</th>
+                    <th>Reason</th><th>Net Amount</th><th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for n in notes %}
+            <tr onclick="vfpSelectRow(this, {{ n.pk }})" style="cursor:pointer">
+                <td>{{ forloop.counter }}</td>
+                <td><strong>{{ n.note_number }}</strong></td>
+                <td>{{ n.note_date }}</td>
+                <td>{% if note_type == 'customer' %}{{ n.customer }}{% else %}{{ n.vendor }}{% endif %}</td>
+                <td>{{ n.reason }}</td>
+                <td>&#8377;{{ n.total_amount }}</td>
+                <td><span class="{% if n.status == 'approved' %}badge-success{% else %}badge-secondary{% endif %}">{{ n.status }}</span></td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7" class="text-center text-muted py-4">No records found</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+let vfpSelectedRow = null;
+function vfpSelectRow(el, id) {
+    document.querySelectorAll('.table-active').forEach(r => r.classList.remove('table-active'));
+    el.classList.add('table-active');
+    vfpSelectedRow = id;
+}
+function vfpAction(action) {
+    if (!vfpSelectedRow && (action === 'modify' || action === 'delete' || action === 'view')) {
+        alert('Please select a row first'); return;
+    }
+    if (action === 'view') window.location.href = `/credit-note/${vfpSelectedRow}/`;
+    if (action === 'modify') window.location.href = `/credit-note/${vfpSelectedRow}/`;
+    if (action === 'delete') {
+        if (confirm('Delete this record?')) window.location.href = `/credit-note/delete/${vfpSelectedRow}/`;
+    }
+}
+document.addEventListener('keydown', function(e) {
+    const tag = (e.target.tagName || '').toLowerCase();
+    if (tag === 'input' || tag === 'textarea' || tag === 'select') { if (e.key !== 'Escape') return; }
+    if (e.key === 'F2') { e.preventDefault(); vfpAction('modify'); }
+    if (e.key === 'F3') { e.preventDefault(); vfpAction('delete'); }
+    if (e.key === 'F4') { e.preventDefault(); vfpAction('view'); }
+    if (e.key === 'Escape') { window.location.href = '/dashboard/'; }
+});
+</script>
+{% endblock %}

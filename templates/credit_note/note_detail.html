@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+{% block title %}Credit Note Detail{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h5><i class="fa fa-file-invoice me-2"></i>{{ note.note_number }}</h5>
+        <div class="page-breadcrumb">Credit Note &rsaquo; {{ note.note_number }}</div>
+    </div>
+    <div class="d-flex gap-2">
+        {% if note.status != 'approved' %}
+        <a href="/credit-note/approve/{{ note.pk }}/" class="btn-ctc"><i class="fa fa-check-circle me-1"></i>Approve</a>
+        {% endif %}
+        <a href="/credit-note/?type={{ note.note_type }}" class="btn-ctc-outline"><i class="fa fa-arrow-left me-1"></i>Back</a>
+    </div>
+</div>
+
+<div class="ctc-card mb-3">
+    <div class="ctc-card-body">
+        <div class="row g-3">
+            <div class="col-md-3"><strong>Date:</strong> {{ note.note_date }}</div>
+            <div class="col-md-3"><strong>Type:</strong> {{ note.get_note_type_display }}</div>
+            <div class="col-md-3">
+                <strong>{% if note.note_type == 'customer' %}Customer{% else %}Vendor{% endif %}:</strong>
+                {% if note.note_type == 'customer' %}{{ note.customer }}{% else %}{{ note.vendor }}{% endif %}
+            </div>
+            <div class="col-md-3">
+                <strong>Status:</strong>
+                <span class="{% if note.status == 'approved' %}badge-success{% else %}badge-secondary{% endif %}">{{ note.status }}</span>
+            </div>
+            <div class="col-12"><strong>Reason:</strong> {{ note.reason }}</div>
+        </div>
+    </div>
+</div>
+
+<div class="ctc-card mb-3">
+    <div class="ctc-card-header"><span>Items</span></div>
+    <div class="ctc-card-body p-0">
+        <table class="table mb-0">
+            <thead><tr><th>Product</th><th>Qty</th><th>Rate</th><th>Tax %</th><th>Tax Amt</th><th>Amount</th></tr></thead>
+            <tbody>
+            {% for i in items %}
+            <tr>
+                <td>{{ i.product.name }}</td>
+                <td>{{ i.quantity }}</td>
+                <td>&#8377;{{ i.rate }}</td>
+                <td>{{ i.tax_rate }}%</td>
+                <td>&#8377;{{ i.tax_amount }}</td>
+                <td>&#8377;{{ i.amount }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="ctc-card mb-4">
+    <div class="ctc-card-body text-end">
+        <p>Subtotal: &#8377;{{ note.subtotal }}</p>
+        <p>Tax: &#8377;{{ note.tax_amount }}</p>
+        <h5 class="fw-bold">Total: &#8377;{{ note.total_amount }}</h5>
+    </div>
+</div>
+{% endblock %}
