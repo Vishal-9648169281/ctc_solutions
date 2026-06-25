@@ -355,17 +355,25 @@ def invoice_pdf(request, pk):
     elements.append(Spacer(1, 2*mm))
 
     # ── AMOUNT IN WORDS ──────────────────────────────────
+    curr = invoice.currency or 'INR'
+    curr_symbol = {'INR': 'Rs.', 'USD': 'USD $', 'CAD': 'CAD $'}.get(curr, 'Rs.')
+    usd_rate = float(invoice.usd_rate or 0)
+    cad_rate = float(invoice.cad_rate or 0)
+    total_inr = float(invoice.total_amount or 0)
+    total_usd = float(invoice.total_usd or 0) or (total_inr / usd_rate if usd_rate else 0)
+    total_cad = float(invoice.total_cad or 0) or (total_inr / cad_rate if cad_rate else 0)
+
     try:
         if has_n2w:
-            words = "Rs." + n2w(int(invoice.total_amount), lang="en_IN").title() + " Only"
+            words = curr_symbol + n2w(int(invoice.total_amount), lang="en_IN").title() + " Only"
         else:
-            words = f"Rs.{invoice.total_amount:.2f} Only"
+            words = f"{curr_symbol}{invoice.total_amount:.2f} Only"
     except:
-        words = f"Rs.{invoice.total_amount:.2f} Only"
+        words = f"{curr_symbol}{invoice.total_amount:.2f} Only"
 
     words_t = Table([[
         Paragraph(f"Invoice Value (In Words): <b>{words}</b>", ps("w1", 8)),
-        Paragraph(f"<b>Rs. {invoice.total_amount:.2f}</b>",
+        Paragraph(f"<b>Rs. {total_inr:.2f}</b>",
             ps("w2", 9, bold=True, align=TA_RIGHT)),
     ]], colWidths=[134*mm, 60*mm])
     words_t.setStyle(TableStyle([
@@ -397,8 +405,18 @@ def invoice_pdf(request, pk):
              ps("a5", 8, bold=True, align=TA_RIGHT))],
         [Paragraph("", ps("rm6", 8)),
          Paragraph("<b>Total Amount After Tax</b>", ps("t6", 8, bold=True)),
-         Paragraph(f"<b>Rs. {float(invoice.total_amount):.2f}</b>",
+         Paragraph(f"<b>Rs. {total_inr:.2f}</b>",
              ps("a6", 9, bold=True, align=TA_RIGHT))],
+        *([
+            [Paragraph("", ps("rm7", 8)),
+             Paragraph(f"Exchange Rate (1 USD = Rs. {usd_rate:.2f})", ps("t7", 8)),
+             Paragraph(f"USD $ {total_usd:.2f}", ps("a7", 8, bold=True, align=TA_RIGHT))],
+        ] if curr == 'USD' and usd_rate else []),
+        *([
+            [Paragraph("", ps("rm8", 8)),
+             Paragraph(f"Exchange Rate (1 CAD = Rs. {cad_rate:.2f})", ps("t8", 8)),
+             Paragraph(f"CAD $ {total_cad:.2f}", ps("a8", 8, bold=True, align=TA_RIGHT))],
+        ] if curr == 'CAD' and cad_rate else []),
     ], colWidths=[65*mm, 89*mm, 40*mm])
     rem_t.setStyle(TableStyle([
         ("BOX", (0,0), (-1,-1), 0.5, colors.black),
