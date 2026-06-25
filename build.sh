@@ -17,4 +17,17 @@ else:
     u.save()
     print('Admin password updated')
 "
-python manage.py loaddata fixtures/initial_data.json && echo "Data loaded" || echo "Data load skipped (already exists)"
+python manage.py shell -c "
+from masters.models import Customer, Vendor, Product
+if Customer.objects.count() == 0:
+    import subprocess, sys
+    result = subprocess.run([sys.executable, 'manage.py', 'loaddata', 'fixtures/initial_data.json'], capture_output=True, text=True)
+    print(result.stdout)
+    print(result.stderr)
+    print('Customers loaded:', Customer.objects.count())
+    print('Vendors loaded:', Vendor.objects.count())
+    print('Products loaded:', Product.objects.count())
+else:
+    print('Data already exists, skipping fixture load')
+    print('Customers:', Customer.objects.count())
+"
