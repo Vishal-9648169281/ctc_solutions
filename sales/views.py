@@ -572,12 +572,15 @@ def invoice_pdf(request, pk):
     ]], colWidths=[W])
     tc.setStyle(ts(box(0.5), pad(5)))
 
-    # Measure bottom sections height, then insert FillPageTable to fill gap
+    # Measure each bottom element individually (KeepTogether.wrap needs canv context)
     from reportlab.platypus import KeepTogether
-    kt = KeepTogether([wrow, bottom, cert_sig, tc])
-    _, kt_h = kt.wrap(W, 9999*mm)
-    elements.append(FillPageTable(reserve_h=kt_h + 1*mm))
-    elements.append(kt)
+    _, h1 = wrow.wrap(W, 9999*mm)
+    _, h2 = bottom.wrap(W, 9999*mm)
+    _, h3 = cert_sig.wrap(W, 9999*mm)
+    _, h4 = tc.wrap(W, 9999*mm)
+    reserve = h1 + h2 + h3 + h4 + 1*mm
+    elements.append(FillPageTable(reserve_h=reserve))
+    elements.append(KeepTogether([wrow, bottom, cert_sig, tc]))
 
     doc.build(elements)
     return response
