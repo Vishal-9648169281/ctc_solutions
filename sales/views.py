@@ -226,7 +226,8 @@ def invoice_pdf(request, pk):
                 name, fontSize=sz,
                 fontName="Helvetica-Bold" if bold else "Helvetica",
                 alignment=align, textColor=color,
-                leading=sz + 2, spaceAfter=0, spaceBefore=0)
+                leading=sz + 2, spaceAfter=0, spaceBefore=0,
+                splitLongWords=0, wordWrap=None)
         return _cache[key]
 
     BK   = colors.black
@@ -315,13 +316,13 @@ def invoice_pdf(request, pk):
     # ── 6. ITEMS TABLE ────────────────────────────────────
     # Cols: S.NO | Description | HSN/SAC | Qty | UOM | Rate | Taxable Rs. | CGST R | CGST A | UTGST R | UTGST A | IGST R | IGST A
     # 13 columns, NO DIS, NO last Amount col (matches sample image)
-    cw = [7*mm, 42*mm, 16*mm, 9*mm, 9*mm, 15*mm, 18*mm,
-          9*mm, 15*mm, 9*mm, 15*mm, 9*mm, 17*mm]
+    cw = [6*mm, 38*mm, 15*mm, 8*mm, 8*mm, 13*mm, 17*mm,
+          10*mm, 14*mm, 10*mm, 14*mm, 10*mm, 15*mm]
     # verify total ≈ W
     # 7+42+16+9+9+15+18+9+15+9+15+9+17 = 190mm — pad description to fill W
     cw[1] = W - sum(cw) + cw[1]
 
-    def H(t,n):  return Paragraph(f"<b>{t}</b>", ps(n,7,bold=True,align=TA_CENTER))
+    def H(t,n):  return Paragraph(f"<b>{t}</b>", ps(n,6,bold=True,align=TA_CENTER))
     def CR(t,n): return Paragraph(t, ps(n,8,align=TA_RIGHT))
     def CC(t,n): return Paragraph(t, ps(n,8,align=TA_CENTER))
 
@@ -332,9 +333,9 @@ def invoice_pdf(request, pk):
             H("UTGST","hug"),  Paragraph("",ps("hug2",7)),
             H("IGST","hig"),   Paragraph("",ps("hig2",7))]
     hdr1 = [Paragraph("",ps(f"hx{i}",7)) for i in range(7)] + [
-            H("Rate\n%","hcgr"), H("Amount\nRs.","hcga"),
-            H("Rate\n%","hugr"), H("Amount\nRs.","huga"),
-            H("Rate\n%","higr"), H("Amount\nRs.","higa")]
+            H("%","hcgr"), H("Amount","hcga"),
+            H("%","hugr"), H("Amount","huga"),
+            H("%","higr"), H("Amount","higa")]
     rows = [hdr0, hdr1]
 
     is_inter     = (invoice.gst_type == 'I')
