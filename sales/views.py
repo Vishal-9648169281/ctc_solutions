@@ -192,10 +192,10 @@ def invoice_pdf(request, pk):
     from reportlab.lib.pagesizes import A4
     from reportlab.lib import colors
     from reportlab.lib.units import mm
-    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, HRFlowable
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, HRFlowable, KeepTogether
     from reportlab.lib.styles import ParagraphStyle
     from reportlab.lib.enums import TA_CENTER, TA_RIGHT, TA_LEFT
-    from reportlab.graphics.shapes import Drawing, Line
+    import os
     try:
         from num2words import num2words as n2w
         has_n2w = True
@@ -203,367 +203,324 @@ def invoice_pdf(request, pk):
         has_n2w = False
 
     invoice = get_object_or_404(SalesInvoice, pk=pk)
-    items = invoice.items.select_related("product").all()
+    items   = invoice.items.select_related("product").all()
 
     response = HttpResponse(content_type="application/pdf")
     response["Content-Disposition"] = f"inline; filename=Invoice_{invoice.invoice_number}.pdf"
 
+    LM = RM = 6*mm
     doc = SimpleDocTemplate(
         response, pagesize=A4,
-        rightMargin=5*mm, leftMargin=5*mm,
+        leftMargin=LM, rightMargin=RM,
         topMargin=5*mm, bottomMargin=5*mm
     )
+    W   = A4[0] - LM - RM          # usable width ≈ 199mm
     elements = []
-    W = 200*mm
 
-    def ps(name, sz=9, bold=False, align=TA_LEFT, color=colors.black, leading=None):
-        return ParagraphStyle(
-            name, fontSize=sz,
-            fontName="Helvetica-Bold" if bold else "Helvetica",
-            alignment=align, textColor=color,
-            leading=leading or (sz + 3)
-        )
+    # ── Style helper ────────────────────────────────────────
+    _cache = {}
+    def ps(name, sz=8, bold=False, align=TA_LEFT, color=colors.black):
+        key = (name, sz, bold, align, color)
+        if key not in _cache:
+            _cache[key] = ParagraphStyle(
+                name, fontSize=sz,
+                fontName="Helvetica-Bold" if bold else "Helvetica",
+                alignment=align, textColor=color,
+                leading=sz + 2, spaceAfter=0, spaceBefore=0)
+        return _cache[key]
 
+    BK   = colors.black
     BLUE = colors.HexColor("#1a237e")
-    LBLUE = colors.HexColor("#e8eaf6")
-    GREY = colors.HexColor("#666666")
+    LBLU = colors.HexColor("#dce4f5")
+    GRY  = colors.HexColor("#555555")
+
+    def ts(*cmds): return TableStyle(list(cmds))
+    def box(w=0.5): return ("BOX",(0,0),(-1,-1),w,BK)
+    def grid(w=0.3): return ("INNERGRID",(0,0),(-1,-1),w,colors.HexColor("#aaaaaa"))
+    def pad(p=3): return ("PADDING",(0,0),(-1,-1),p)
+    def vmid(): return ("VALIGN",(0,0),(-1,-1),"MIDDLE")
 
 
 
-    # ── TAX INVOICE TITLE ────────────────────────────────
-    title_row = Table([[
-        Paragraph("TAX INVOICE", ps("ti", 13, bold=True, align=TA_CENTER, color=BLUE)),
-        Paragraph("Original For Buyer", ps("ofb", 8, align=TA_RIGHT, color=GREY))
-    ]], colWidths=[146*mm, 54*mm])
-    title_row.setStyle(TableStyle([("PADDING", (0,0), (-1,-1), 2)]))
-    elements.append(title_row)
-    elements.append(HRFlowable(width=W, thickness=1, color=BLUE, spaceAfter=3))
+    # ── 1. TOP STRIP: UDYAM | TAX INVOICE | Original For Buyer ──
+    top = Table([[
+        Paragraph("UDYAM REG. NO : UDYAM-CH-01-0003053", ps("ud", 7, color=GRY)),
+        Paragraph("<b>TAX  INVOICE</b>", ps("ti", 14, bold=True, align=TA_CENTER, color=BLUE)),
+        Paragraph("Original For Buyer", ps("ofb", 7, align=TA_RIGHT, color=GRY)),
+    ]], colWidths=[W*0.30, W*0.40, W*0.30])
+    top.setStyle(ts(pad(2), vmid()))
+    elements.append(top)
+    elements.append(HRFlowable(width=W, thickness=1.2, color=BLUE, spaceAfter=2))
 
-    # ── COMPANY BILL TOP LOGO (full width) ───────────────
-    import os
+    # ── 2. COMPANY LOGO (full width) ──────────────────────
     logo_path = os.path.join(settings.BASE_DIR, "company_bill_top_logo.png")
     if os.path.exists(logo_path):
         from reportlab.platypus import Image as RLImage
         from PIL import Image as PILImage
         with PILImage.open(logo_path) as im:
             orig_w, orig_h = im.size
-        aspect = orig_h / float(orig_w)
-        logo_img = RLImage(logo_path, width=W, height=W*aspect)
+        logo_img = RLImage(logo_path, width=W, height=W * orig_h / orig_w)
         elements.append(logo_img)
-        elements.append(Spacer(1, 2*mm))
+    elements.append(Spacer(1, 1*mm))
 
-    # ── GSTIN & INVOICE INFO ─────────────────────────────
+    # ── 3. GSTIN / INVOICE INFO ───────────────────────────
     inv_date = invoice.invoice_date.strftime("%d-%m-%Y") if hasattr(invoice.invoice_date, "strftime") else str(invoice.invoice_date)
+    rc_text  = "Yes" if invoice.reverse_charge == "Y" else "No"
     info = Table([
-        [Paragraph("G.S.T.IN No.: <b>04ALVPK9235D1ZW</b>", ps("i1", 8)),
-         Paragraph("Transportation Mode :", ps("i2", 8)),
-         Paragraph("UDYAM REG. NO.: UDYAM-CH-09-0060963", ps("i3", 8))],
-        [Paragraph(f"Tax is Payable on Reverse Charge(Yes/No): <b>{'Yes' if invoice.reverse_charge == 'Y' else 'No'}</b>", ps("i4", 8)),
-         Paragraph(f"Veh. No : {invoice.vehicle_number or ''}", ps("i5", 8)),
-         Paragraph("", ps("i6", 8))],
-        [Paragraph(f"Invoice Serial Number : <b>{invoice.invoice_number}</b>", ps("i7", 8, bold=True)),
-         Paragraph("Date &amp; Time of Supply : -", ps("i8", 8)),
-         Paragraph("", ps("i9", 8))],
-        [Paragraph(f"Invoice Date : <b>{inv_date}</b>", ps("i10", 8, bold=True)),
-         Paragraph(f"Place Of Supply : {invoice.place_of_supply or ''}", ps("i11", 8)),
-         Paragraph("", ps("i12", 8))],
-    ], colWidths=[84*mm, 66*mm, 50*mm])
-    info.setStyle(TableStyle([
-        ("BOX", (0,0), (-1,-1), 0.5, colors.black),
-        ("INNERGRID", (0,0), (-1,-1), 0.25, colors.grey),
-        ("PADDING", (0,0), (-1,-1), 3),
-        ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
-    ]))
+        [Paragraph(f"GSTIN Number : <b>04ALVPK9235D1ZW</b>",         ps("i1",8)),
+         Paragraph(f"Transportation Mode : {invoice.transport or ''}",ps("i2",8))],
+        [Paragraph(f"Tax is Payable on Reverse Charge(Yes/No) : {rc_text}", ps("i3",8)),
+         Paragraph(f"Veh. No : {invoice.vehicle_number or ''}",       ps("i4",8))],
+        [Paragraph(f"Invoice Serial Number : <b>{invoice.invoice_number}</b>", ps("i5",8,bold=True)),
+         Paragraph("Date &amp; Time of Supply :  -  -",               ps("i6",8))],
+        [Paragraph(f"Invoice Date &nbsp;&nbsp;&nbsp; : <b>{inv_date}</b>", ps("i7",8,bold=True)),
+         Paragraph(f"Place OF Supply : {invoice.place_of_supply or ''}",   ps("i8",8))],
+    ], colWidths=[W*0.50, W*0.50])
+    info.setStyle(ts(box(), grid(), pad(3), vmid()))
     elements.append(info)
-    elements.append(Spacer(1, 2*mm))
 
-    # ── BILL TO ──────────────────────────────────────────
+    # ── 4. PARTY: BILLED TO  |  SHIPPED TO ───────────────
+    cust = invoice.customer
+    half = W / 2
     party = Table([
-        [Paragraph("<b>Details of Receiver (Billed to)</b>", ps("pb1", 8, bold=True)),
-         Paragraph("<b>Details of Consignee (Shipped to)</b>", ps("pb2", 8, bold=True))],
-        [Paragraph(f"Name: <b>{invoice.customer.name}</b>", ps("p1", 8)),
-         Paragraph("Name:", ps("p2", 8))],
-        [Paragraph(f"Address: {invoice.customer.address or ''}", ps("p3", 8)),
-         Paragraph("Address:", ps("p4", 8))],
-        [Paragraph(f"State: {invoice.customer.state or ''} &nbsp;&nbsp; State Code:", ps("p5", 8)),
-         Paragraph("State: &nbsp;&nbsp; State Code:", ps("p6", 8))],
-        [Paragraph(f"GSTIN Number: {invoice.customer.gstin or ''}", ps("p7", 8)),
-         Paragraph("GSTIN Number:", ps("p8", 8))],
-    ], colWidths=[100*mm, 100*mm])
-    party.setStyle(TableStyle([
-        ("BOX", (0,0), (-1,-1), 0.5, colors.black),
-        ("LINEAFTER", (0,0), (0,-1), 0.5, colors.black),
-        ("BACKGROUND", (0,0), (-1,0), LBLUE),
-        ("PADDING", (0,0), (-1,-1), 3),
-        ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
-    ]))
+        [Paragraph("<b>Details of Receiver (Billed to)</b>",   ps("pb1",8,bold=True)),
+         Paragraph("<b>Details of Consignee (Shipped to)</b>", ps("pb2",8,bold=True))],
+        [Paragraph(f"Name : <b>{cust.name}</b>",  ps("p1",8)), Paragraph("Name :",   ps("p2",8))],
+        [Paragraph(f"Address : {cust.address or ''}", ps("p3",8)), Paragraph("Address :", ps("p4",8))],
+        [Paragraph("",ps("p5b",8)), Paragraph("",ps("p6b",8))],
+        [Paragraph(f"State : {cust.state or ''}",ps("p5",8)),  Paragraph("State :",  ps("p6",8))],
+        [Paragraph(f"State Code : {cust.state or ''}",ps("p7",8)), Paragraph("State Code :", ps("p8",8))],
+        [Paragraph(f"GSTIN Number : {cust.gstin or ''}",ps("p9",8)), Paragraph("GSTIN Number :", ps("p10",8))],
+        [Paragraph(f"Phone No. : {cust.phone or ''}",ps("p11",8)), Paragraph("Phone No. :", ps("p12",8))],
+    ], colWidths=[half, half])
+    party.setStyle(ts(box(), grid(0.2), pad(3), vmid(),
+        ("BACKGROUND",(0,0),(-1,0), LBLU),
+        ("LINEAFTER",(0,0),(0,-1),0.5,BK),
+        ("FONTNAME",(0,0),(-1,0),"Helvetica-Bold"),
+    ))
     elements.append(party)
-    elements.append(Spacer(1, 2*mm))
 
-    # ── ORDER INFO ───────────────────────────────────────
-    gr_date_str = invoice.gr_date.strftime("%d-%m-%Y") if invoice.gr_date else "-"
-    order_date_str = invoice.order_date.strftime("%d-%m-%Y") if invoice.order_date else "-"
+    # ── 5. ORDER / GR INFO ────────────────────────────────
+    gr_d  = invoice.gr_date.strftime("%d-%m-%Y")    if invoice.gr_date    else "- -"
+    ord_d = invoice.order_date.strftime("%d-%m-%Y") if invoice.order_date else "- -"
     order = Table([
-        [Paragraph(f"ORDER NO. : {invoice.order_number or ''}", ps("o1", 8)),
-         Paragraph(f"G.R.NO. : {invoice.gr_number or ''}", ps("o2", 8))],
-        [Paragraph(f"ORDER DATE : {order_date_str}", ps("o3", 8)),
-         Paragraph(f"G.R DATE : {gr_date_str}", ps("o4", 8))],
-    ], colWidths=[100*mm, 100*mm])
-    order.setStyle(TableStyle([
-        ("BOX", (0,0), (-1,-1), 0.5, colors.black),
-        ("INNERGRID", (0,0), (-1,-1), 0.25, colors.grey),
-        ("PADDING", (0,0), (-1,-1), 3),
-    ]))
+        [Paragraph(f"ORDER NO. &nbsp;&nbsp;: {invoice.order_number or ''}",ps("o1",8)),
+         Paragraph(f"G.R.NO. : {invoice.gr_number or ''}",                 ps("o2",8))],
+        [Paragraph(f"ORDER DATE : {ord_d}", ps("o3",8)),
+         Paragraph(f"G.R.DATE : {gr_d}",   ps("o4",8))],
+    ], colWidths=[W*0.50, W*0.50])
+    order.setStyle(ts(box(), grid(0.2), pad(3), vmid()))
     elements.append(order)
-    elements.append(Spacer(1, 2*mm))
 
-    # ── ITEMS TABLE ──────────────────────────────────────
-    # 15 cols: S.NO | Desc | HSN | Qty | UOM | Rate | DIS | Taxable | CgstR | CgstA | UtgstR | UtgstA | IgstR | IgstA | Amount
-    # Total width = 200mm
-    col_w = [7*mm, 33*mm, 14*mm, 8*mm, 8*mm, 14*mm, 8*mm, 15*mm,
-             8*mm, 13*mm, 8*mm, 13*mm, 8*mm, 13*mm, 16*mm]
+    # ── 6. ITEMS TABLE ────────────────────────────────────
+    # Cols: S.NO | Description | HSN/SAC | Qty | UOM | Rate | Taxable ₹ | CGST R | CGST A | UTGST R | UTGST A | IGST R | IGST A
+    # 13 columns, NO DIS, NO last Amount col (matches sample image)
+    cw = [7*mm, 42*mm, 16*mm, 9*mm, 9*mm, 15*mm, 18*mm,
+          9*mm, 15*mm, 9*mm, 15*mm, 9*mm, 17*mm]
+    # verify total ≈ W
+    # 7+42+16+9+9+15+18+9+15+9+15+9+17 = 190mm — pad description to fill W
+    cw[1] = W - sum(cw) + cw[1]
 
-    FS = 8  # readable font size for table
-    def _h(t, n): return Paragraph(f"<b>{t}</b>", ps(n, FS-1, bold=True, align=TA_CENTER))
-    def _c(t, n):  return Paragraph(t, ps(n, FS, align=TA_RIGHT))
-    def _cc(t, n): return Paragraph(t, ps(n, FS, align=TA_CENTER))
+    def H(t,n):  return Paragraph(f"<b>{t}</b>", ps(n,7,bold=True,align=TA_CENTER))
+    def CR(t,n): return Paragraph(t, ps(n,8,align=TA_RIGHT))
+    def CC(t,n): return Paragraph(t, ps(n,8,align=TA_CENTER))
 
-    # Row 0: group headers (CGST/UTGST/IGST each span 2 cols)
-    hdr0 = [
-        _h("S.\nNO","h0"), _h("Description of Goods","h1"), _h("HSN\nCode","h2"),
-        _h("Qty","h3"), _h("UOM","h4"), _h("Rate","h5"), _h("DIS","h6"),
-        _h("Taxable\nValue","h7"),
-        _h("CGST","hcg"),  Paragraph("",ps("hcg2",FS)),
-        _h("UTGST","hug"), Paragraph("",ps("hug2",FS)),
-        _h("IGST","hig"),  Paragraph("",ps("hig2",FS)),
-        _h("Amount\n(₹)","ha"),
-    ]
-    # Row 1: sub-headers Rate / Amount for each GST group
-    hdr1 = [Paragraph("",ps(f"x{i}",FS)) for i in range(8)] + [
-        _h("Rate","hcgr"), _h("Amount","hcga"),
-        _h("Rate","hugr"), _h("Amount","huga"),
-        _h("Rate","higr"), _h("Amount","higa"),
-        Paragraph("",ps("xa",FS)),
-    ]
+    hdr0 = [H("S.\nNO","h0"), H("Description of Goods","h1"), H("HSN Code\n/ SAC","h2"),
+            H("Qty","h3"), H("UOM","h4"), H("Rate","h5"),
+            H("Taxable\nValue\n₹","h6"),
+            H("CGST","hcg"),   Paragraph("",ps("hcg2",7)),
+            H("UTGST","hug"),  Paragraph("",ps("hug2",7)),
+            H("IGST","hig"),   Paragraph("",ps("hig2",7))]
+    hdr1 = [Paragraph("",ps(f"hx{i}",7)) for i in range(7)] + [
+            H("Rate\n%","hcgr"), H("Amount\n₹","hcga"),
+            H("Rate\n%","hugr"), H("Amount\n₹","huga"),
+            H("Rate\n%","higr"), H("Amount\n₹","higa")]
     rows = [hdr0, hdr1]
 
-    is_inter = (invoice.gst_type == 'I')
-    total_taxable = 0
-    total_cgst = 0
-    total_igst = 0
-    total_amt = 0
+    is_inter     = (invoice.gst_type == 'I')
+    total_taxable= 0.0
+    total_cgst   = 0.0
+    total_igst   = 0.0
 
     for idx, item in enumerate(items, 1):
-        dis_pct = float(item.discount_pct or 0)
-        taxable = float(item.quantity) * float(item.rate) * (1 - dis_pct / 100)
+        dis_pct   = float(item.discount_pct or 0)
+        taxable   = float(item.quantity) * float(item.rate) * (1 - dis_pct/100)
         full_rate = float(item.tax_rate)
         half_rate = full_rate / 2
         if is_inter:
             igst_amt = taxable * full_rate / 100
-            cgst_amt = 0
-            amt = taxable + igst_amt
+            cgst_amt = 0.0
         else:
             cgst_amt = taxable * half_rate / 100
-            igst_amt = 0
-            amt = taxable + (cgst_amt * 2)
+            igst_amt = 0.0
         total_taxable += taxable
-        total_cgst += cgst_amt
-        total_igst += igst_amt
-        total_amt += amt
-        unit_name = item.unit or (str(item.product.unit) if item.product and item.product.unit else "NOS")
-        hsn_display = item.hsn_no or (item.product.hsn_code if item.product else "") or ""
-        item_name = item.description or (item.product.name if item.product else "")
-        dis_str = f"{dis_pct:.0f}%" if dis_pct else ""
+        total_cgst    += cgst_amt
+        total_igst    += igst_amt
+        uname  = item.unit or (str(item.product.unit) if item.product and item.product.unit else "NOS")
+        hsn    = item.hsn_no or (item.product.hsn_code if item.product else "") or ""
+        iname  = item.description or (item.product.name if item.product else "")
         rows.append([
-            _cc(str(idx),         f"rno{idx}"),
-            Paragraph(item_name,  ps(f"rd{idx}", FS)),
-            _cc(hsn_display,      f"rh{idx}"),
-            _cc(str(item.quantity),f"rq{idx}"),
-            _cc(unit_name,        f"ru{idx}"),
-            _c(f"{float(item.rate):.2f}", f"rr{idx}"),
-            _cc(dis_str,          f"rdis{idx}"),
-            _c(f"{taxable:.2f}",  f"rt{idx}"),
-            # CGST
-            _cc(f"{half_rate:.0f}%" if not is_inter else "",  f"rcgr{idx}"),
-            _c(f"{cgst_amt:.2f}" if not is_inter else "",     f"rcga{idx}"),
-            # UTGST
-            _cc(f"{half_rate:.0f}%" if not is_inter else "",  f"rugr{idx}"),
-            _c(f"{cgst_amt:.2f}" if not is_inter else "",     f"ruga{idx}"),
-            # IGST
-            _cc(f"{full_rate:.0f}%" if is_inter else "",      f"rigr{idx}"),
-            _c(f"{igst_amt:.2f}" if is_inter else "",         f"riga{idx}"),
-            _c(f"{amt:.2f}",      f"ramt{idx}"),
+            CC(str(idx),              f"rno{idx}"),
+            Paragraph(iname,          ps(f"rd{idx}",8)),
+            CC(hsn,                   f"rh{idx}"),
+            CC(str(item.quantity),    f"rq{idx}"),
+            CC(uname,                 f"ru{idx}"),
+            CR(f"{float(item.rate):.2f}", f"rr{idx}"),
+            CR(f"{taxable:.2f}",      f"rt{idx}"),
+            CC(f"{half_rate:.0f}" if not is_inter else "0.00", f"rcgr{idx}"),
+            CR(f"{cgst_amt:.2f}",     f"rcga{idx}"),
+            CC(f"{half_rate:.0f}" if not is_inter else "0.00", f"rugr{idx}"),
+            CR(f"{cgst_amt:.2f}" if not is_inter else "0.00",  f"ruga{idx}"),
+            CC(f"{full_rate:.0f}" if is_inter else "0.00",     f"rigr{idx}"),
+            CR(f"{igst_amt:.2f}",     f"riga{idx}"),
         ])
 
-    # Empty filler rows (min 5 item rows for clean look)
-    for i in range(max(0, 5 - len(items))):
-        rows.append([Paragraph("", ps(f"ef{i}", FS))] * 15)
+    # Filler rows
+    for fi in range(max(0, 8 - len(items))):
+        rows.append([Paragraph(" ", ps(f"ef{fi}",8))] * 13)
 
-    # Totals row
-    total_tax = total_cgst * 2 if not is_inter else total_igst
-    rows.append([
-        Paragraph("", ps("tf0", FS)),
-        Paragraph("<b>TOTAL</b>", ps("tft", FS, bold=True)),
-        Paragraph("", ps("tf2", FS)),
-        Paragraph("", ps("tf3", FS)),
-        Paragraph("", ps("tf4", FS)),
-        Paragraph("", ps("tf5", FS)),
-        Paragraph("", ps("tf6", FS)),
-        _c(f"{total_taxable:.2f}", "tftx"),
-        Paragraph("", ps("tf8", FS)),
-        _c(f"{total_cgst:.2f}" if not is_inter else "", "tfcga"),
-        Paragraph("", ps("tf10", FS)),
-        _c(f"{total_cgst:.2f}" if not is_inter else "", "tfuga"),
-        Paragraph("", ps("tf12", FS)),
-        _c(f"{total_igst:.2f}" if is_inter else "", "tfiga"),
-        _c(f"{total_amt:.2f}", "tfamt"),
+    NR = len(rows)
+    itbl = Table(rows, colWidths=cw, repeatRows=2)
+    itbl.setStyle(TableStyle([
+        box(0.6), grid(0.25), pad(3), vmid(),
+        ("BACKGROUND", (0,0),  (-1,1),   LBLU),
+        ("FONTSIZE",   (0,0),  (-1,-1),  8),
+        ("ALIGN",      (0,0),  (-1,-1),  "CENTER"),
+        ("ROWBACKGROUNDS",(0,2),(-1,NR-1),[colors.white, colors.HexColor("#f4f6fc")]),
+        # Span non-split headers over 2 rows
+        ("SPAN",(0,0),(0,1)), ("SPAN",(1,0),(1,1)), ("SPAN",(2,0),(2,1)),
+        ("SPAN",(3,0),(3,1)), ("SPAN",(4,0),(4,1)), ("SPAN",(5,0),(5,1)),
+        ("SPAN",(6,0),(6,1)),
+        # GST group spans in row 0
+        ("SPAN",(7,0),(8,0)),  # CGST
+        ("SPAN",(9,0),(10,0)), # UTGST
+        ("SPAN",(11,0),(12,0)),# IGST
+        # Thicker borders at GST group starts
+        ("LINEBEFORE",(7,0),(-1,-1),0.6,BK),
+        ("LINEBEFORE",(9,0),(-1,-1),0.6,BK),
+        ("LINEBEFORE",(11,0),(-1,-1),0.6,BK),
+    ]))
+    elements.append(itbl)
+
+    # ── 7. INVOICE VALUE IN WORDS + GST TOTALS ROW ───────
+    curr       = invoice.currency or 'INR'
+    sym        = {'INR':'Rs.','USD':'USD $','CAD':'CAD $'}.get(curr,'Rs.')
+    usd_rate   = float(invoice.usd_rate or 0)
+    cad_rate   = float(invoice.cad_rate or 0)
+    total_inr  = float(invoice.total_amount or 0)
+    total_usd  = float(invoice.total_usd or 0) or (total_inr/usd_rate if usd_rate else 0)
+    total_cad  = float(invoice.total_cad or 0) or (total_inr/cad_rate if cad_rate else 0)
+    try:
+        words = sym + (n2w(int(invoice.total_amount), lang="en_IN").title() if has_n2w else f"{invoice.total_amount:.2f}") + " only"
+    except:
+        words = f"{sym}{invoice.total_amount:.2f} only"
+
+    # Words row spans 7 left cols; then CGST-amt | UTGST-amt | IGST-amt in right cols
+    wrow = Table([[
+        Paragraph(f"Invoice Value (In Words) &nbsp; <b>{words}</b>", ps("ww",8)),
+        Paragraph(f"₹ {total_cgst:.2f}",  ps("wcg",8,align=TA_RIGHT)),
+        Paragraph(f"₹ {total_cgst:.2f}" if not is_inter else "₹ 0.00",
+                                                ps("wug",8,align=TA_RIGHT)),
+        Paragraph(f"₹ {total_igst:.2f}",  ps("wig",8,align=TA_RIGHT)),
+    ]], colWidths=[W - 3*24*mm, 24*mm, 24*mm, 24*mm])
+    wrow.setStyle(ts(box(0.6), pad(4), vmid()))
+    elements.append(wrow)
+
+    # ── 8. REMARKS / BANK  |  TOTALS  ─────────────────────
+    tax_total = total_cgst * 2 if not is_inter else total_igst
+    due_str   = invoice.due_date.strftime("%d-%m-%Y") if invoice.due_date else ""
+
+    left_txt = (
+        "<b>REMARKS:</b><br/>"
+        f"{invoice.notes or ''}<br/><br/>"
+        f"DUE DATE : {due_str}<br/><br/>"
+        "<b>BANK NAME &nbsp;: ICICI BANK</b><br/>"
+        "A/c No &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: 632205005712<br/>"
+        "BRANCH &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: SECTOR 35C<br/>"
+        "IFSC CODE &nbsp;: ICIC0006322"
+    )
+
+    right_rows = [
+        [Paragraph("Total Amount Before Tax", ps("ta1",8)),
+         Paragraph(f"₹", ps("ta1s",8,align=TA_RIGHT)),
+         Paragraph(f"{total_taxable:.2f}", ps("ta1a",8,align=TA_RIGHT))],
+        [Paragraph("ADD: CGST", ps("ta2",8)),
+         Paragraph("₹", ps("ta2s",8,align=TA_RIGHT)),
+         Paragraph(f"{total_cgst:.2f}", ps("ta2a",8,align=TA_RIGHT))],
+        [Paragraph("ADD: UTGST", ps("ta3",8)),
+         Paragraph("₹", ps("ta3s",8,align=TA_RIGHT)),
+         Paragraph(f"{total_cgst:.2f}" if not is_inter else "0.00", ps("ta3a",8,align=TA_RIGHT))],
+        [Paragraph("ADD: IGST", ps("ta4",8)),
+         Paragraph("₹", ps("ta4s",8,align=TA_RIGHT)),
+         Paragraph(f"{total_igst:.2f}", ps("ta4a",8,align=TA_RIGHT))],
+        [Paragraph("Tax Amount : GST", ps("ta5",8)),
+         Paragraph("₹", ps("ta5s",8,align=TA_RIGHT)),
+         Paragraph(f"{tax_total:.2f}", ps("ta5a",8,align=TA_RIGHT))],
+        [Paragraph("", ps("ta6",8)), Paragraph("₹", ps("ta6s",8,align=TA_RIGHT)),
+         Paragraph("", ps("ta6a",8))],
+    ]
+    if curr == 'USD' and usd_rate:
+        right_rows.append([Paragraph(f"Exch Rate 1 USD=Rs.{usd_rate:.2f}",ps("ta7",8)),
+                           Paragraph("USD$",ps("ta7s",8,align=TA_RIGHT)),
+                           Paragraph(f"{total_usd:.2f}",ps("ta7a",8,align=TA_RIGHT))])
+    if curr == 'CAD' and cad_rate:
+        right_rows.append([Paragraph(f"Exch Rate 1 CAD=Rs.{cad_rate:.2f}",ps("ta8",8)),
+                           Paragraph("CAD$",ps("ta8s",8,align=TA_RIGHT)),
+                           Paragraph(f"{total_cad:.2f}",ps("ta8a",8,align=TA_RIGHT))])
+    right_rows.append([
+        Paragraph("<b>Total Amount After Tax :</b>", ps("taf",9,bold=True)),
+        Paragraph("<b>₹</b>", ps("tafs",9,bold=True,align=TA_RIGHT)),
+        Paragraph(f"<b>{total_inr:.2f}</b>", ps("tafa",9,bold=True,align=TA_RIGHT)),
     ])
 
-    item_t = Table(rows, colWidths=col_w, repeatRows=2)
-    n_data_rows = len(rows)
-    item_t.setStyle(TableStyle([
-        ("BOX",        (0,0),  (-1,-1),  0.7,  colors.black),
-        ("INNERGRID",  (0,0),  (-1,-1),  0.25, colors.grey),
-        ("BACKGROUND", (0,0),  (-1,1),   LBLUE),
-        ("BACKGROUND", (0,n_data_rows-1), (-1,n_data_rows-1), LBLUE),
-        ("FONTNAME",   (0,n_data_rows-1), (-1,n_data_rows-1), "Helvetica-Bold"),
-        ("FONTSIZE",   (0,0),  (-1,-1),  FS),
-        ("ALIGN",      (0,0),  (-1,-1),  "CENTER"),
-        ("VALIGN",     (0,0),  (-1,-1),  "MIDDLE"),
-        ("PADDING",    (0,0),  (-1,-1),  3),
-        ("ROWBACKGROUNDS", (0,2), (-1,n_data_rows-2), [colors.white, colors.HexColor("#f5f7ff")]),
-        # Span single-col headers across 2 header rows
-        ("SPAN", (0,0),  (0,1)),   # S.NO
-        ("SPAN", (1,0),  (1,1)),   # Description
-        ("SPAN", (2,0),  (2,1)),   # HSN
-        ("SPAN", (3,0),  (3,1)),   # Qty
-        ("SPAN", (4,0),  (4,1)),   # UOM
-        ("SPAN", (5,0),  (5,1)),   # Rate
-        ("SPAN", (6,0),  (6,1)),   # DIS
-        ("SPAN", (7,0),  (7,1)),   # Taxable Value
-        ("SPAN", (14,0), (14,1)),  # Amount
-        # CGST / UTGST / IGST group headers
-        ("SPAN", (8,0),  (9,0)),   # CGST
-        ("SPAN", (10,0), (11,0)),  # UTGST
-        ("SPAN", (12,0), (13,0)),  # IGST
-        # Thicker dividers between GST groups
-        ("LINEBEFORE", (8,0),  (-1,-1), 0.7, colors.black),
-        ("LINEBEFORE", (10,0), (-1,-1), 0.7, colors.black),
-        ("LINEBEFORE", (12,0), (-1,-1), 0.7, colors.black),
-        ("LINEBEFORE", (14,0), (-1,-1), 0.7, colors.black),
+    right_tbl = Table(right_rows, colWidths=[55*mm, 8*mm, 25*mm])
+    NRR = len(right_rows)
+    right_tbl.setStyle(TableStyle([
+        box(0.5), pad(3), vmid(),
+        ("INNERGRID",(0,0),(-1,-1),0.2,colors.HexColor("#cccccc")),
+        ("BACKGROUND",(0,NRR-1),(-1,NRR-1),LBLU),
+        ("FONTNAME",(0,NRR-1),(-1,NRR-1),"Helvetica-Bold"),
+        ("ALIGN",(1,0),(-1,-1),"RIGHT"),
     ]))
-    elements.append(item_t)
-    elements.append(Spacer(1, 2*mm))
 
-    # ── AMOUNT IN WORDS ──────────────────────────────────
-    curr = invoice.currency or 'INR'
-    curr_symbol = {'INR': 'Rs.', 'USD': 'USD $', 'CAD': 'CAD $'}.get(curr, 'Rs.')
-    usd_rate = float(invoice.usd_rate or 0)
-    cad_rate = float(invoice.cad_rate or 0)
-    total_inr = float(invoice.total_amount or 0)
-    total_usd = float(invoice.total_usd or 0) or (total_inr / usd_rate if usd_rate else 0)
-    total_cad = float(invoice.total_cad or 0) or (total_inr / cad_rate if cad_rate else 0)
+    RW = 88*mm   # right column width
+    LW = W - RW
+    bottom = Table([[
+        Paragraph(left_txt, ps("lft",8)),
+        right_tbl,
+    ]], colWidths=[LW, RW])
+    bottom.setStyle(ts(box(0.5), pad(4), vmid(),
+        ("LINEAFTER",(0,0),(0,0),0.5,BK),
+        ("VALIGN",(0,0),(-1,-1),"TOP"),
+    ))
+    elements.append(bottom)
 
-    try:
-        if has_n2w:
-            words = curr_symbol + n2w(int(invoice.total_amount), lang="en_IN").title() + " Only"
-        else:
-            words = f"{curr_symbol}{invoice.total_amount:.2f} Only"
-    except:
-        words = f"{curr_symbol}{invoice.total_amount:.2f} Only"
+    # ── 9. CERTIFIED + FOR CTC ────────────────────────────
+    cert_sig = Table([[
+        Paragraph("Certified that the Particulars given above are true and correct",
+                  ps("cert",8,color=GRY)),
+        Paragraph("<b>For CHANDIGARH TEAM COMPUTERS</b><br/><br/><br/><br/>"
+                  "Authorised Signatory",
+                  ps("sig",8,bold=True,align=TA_CENTER)),
+    ]], colWidths=[W*0.60, W*0.40])
+    cert_sig.setStyle(ts(box(0.5), pad(5), vmid(),
+        ("LINEAFTER",(0,0),(0,0),0.5,BK),
+        ("VALIGN",(0,0),(0,0),"MIDDLE"),
+        ("VALIGN",(1,0),(1,0),"TOP"),
+    ))
+    elements.append(cert_sig)
 
-    words_t = Table([[
-        Paragraph(f"Invoice Value (In Words): <b>{words}</b>", ps("w1", 9)),
-    ]], colWidths=[200*mm])
-    words_t.setStyle(TableStyle([
-        ("BOX", (0,0), (-1,-1), 0.5, colors.black),
-        ("PADDING", (0,0), (-1,-1), 5),
-        ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
-    ]))
-    elements.append(words_t)
-    elements.append(Spacer(1, 2*mm))
-
-    # ── REMARKS & TOTALS ─────────────────────────────────
-    rem_t = Table([
-        [Paragraph("<b>REMARKS:</b>", ps("rm1", 8, bold=True)),
-         Paragraph("Total Amount Before Tax", ps("t1", 8)),
-         Paragraph(f"Rs. {total_taxable:.2f}", ps("a1", 8, align=TA_RIGHT))],
-        [Paragraph(invoice.notes or "", ps("rm2", 8)),
-         Paragraph("ADD: CGST", ps("t2", 8)),
-         Paragraph(f"Rs. {total_cgst:.2f}", ps("a2", 8, align=TA_RIGHT))],
-        [Paragraph("", ps("rm3", 8)),
-         Paragraph("ADD: UTGST", ps("t3", 8)),
-         Paragraph(f"Rs. {total_cgst:.2f}" if not is_inter else "Rs. 0.00", ps("a3", 8, align=TA_RIGHT))],
-        [Paragraph("", ps("rm4", 8)),
-         Paragraph("ADD: IGST", ps("t4", 8)),
-         Paragraph(f"Rs. {total_igst:.2f}", ps("a4", 8, align=TA_RIGHT))],
-        [Paragraph("", ps("rm5", 8)),
-         Paragraph("<b>Tax Amount - GST</b>", ps("t5", 8, bold=True)),
-         Paragraph(f"<b>Rs. {float(invoice.tax_amount):.2f}</b>",
-             ps("a5", 8, bold=True, align=TA_RIGHT))],
-        [Paragraph("", ps("rm6", 8)),
-         Paragraph("<b>Total Amount After Tax</b>", ps("t6", 8, bold=True)),
-         Paragraph(f"<b>Rs. {total_inr:.2f}</b>",
-             ps("a6", 9, bold=True, align=TA_RIGHT))],
-        *([
-            [Paragraph("", ps("rm7", 8)),
-             Paragraph(f"Exchange Rate (1 USD = Rs. {usd_rate:.2f})", ps("t7", 8)),
-             Paragraph(f"USD $ {total_usd:.2f}", ps("a7", 8, bold=True, align=TA_RIGHT))],
-        ] if curr == 'USD' and usd_rate else []),
-        *([
-            [Paragraph("", ps("rm8", 8)),
-             Paragraph(f"Exchange Rate (1 CAD = Rs. {cad_rate:.2f})", ps("t8", 8)),
-             Paragraph(f"CAD $ {total_cad:.2f}", ps("a8", 8, bold=True, align=TA_RIGHT))],
-        ] if curr == 'CAD' and cad_rate else []),
-    ], colWidths=[68*mm, 92*mm, 40*mm])
-    rem_t.setStyle(TableStyle([
-        ("BOX", (0,0), (-1,-1), 0.5, colors.black),
-        ("LINEAFTER", (0,0), (0,-1), 0.5, colors.black),
-        ("LINEBEFORE", (2,0), (2,-1), 0.5, colors.black),
-        ("BACKGROUND", (1,5), (2,5), LBLUE),
-        ("PADDING", (0,0), (-1,-1), 3),
-        ("SPAN", (0,1), (0,-1)),
-        ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
-    ]))
-    elements.append(rem_t)
-    elements.append(Spacer(1, 2*mm))
-
-    # ── CERTIFIED TEXT ───────────────────────────────────
-    elements.append(Paragraph(
-        "Certified that the Particulars given above are true and correct",
-        ps("cert", 7, color=GREY)))
-    elements.append(Spacer(1, 2*mm))
-
-    # ── BANK & TERMS & SIGNATURE ─────────────────────────
-    bank_t = Table([[
-        Paragraph(
-            "<b>BANK NAME : ICICI BANK</b><br/>"
-            "A/c No &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: 632205005712<br/>"
-            "BRANCH &nbsp;&nbsp;&nbsp;&nbsp;: SECTOR 33C<br/>"
-            "IF SC CODE : ICIC0000322",
-            ps("bk", 8)),
+    # ── 10. TERMS & CONDITIONS ────────────────────────────
+    tc = Table([[
         Paragraph(
             "<b>TERM &amp; CONDITION</b><br/>"
-            "1. Our responsibility ceases as soon as the goods are "
-            "handed over to Carrier/customer.<br/>"
-            "2. All Disputes subject to Chandigarh Jurisdiction.<br/>"
-            "3. Interest @ Rs.2+% p.a. will be charged on all amounts "
-            "remained unpaid after 15 days.",
-            ps("tc", 7)),
-        Paragraph(
-            "<b>For CHANDIGARH TEAM COMPUTERS</b>"
-            "<br/><br/><br/><br/><br/>"
-            "Authorised Signatory",
-            ps("sg", 8, align=TA_CENTER)),
-    ]], colWidths=[55*mm, 86*mm, 53*mm])
-    bank_t.setStyle(TableStyle([
-        ("BOX", (0,0), (-1,-1), 0.5, colors.black),
-        ("LINEAFTER", (0,0), (0,0), 0.5, colors.black),
-        ("LINEAFTER", (1,0), (1,0), 0.5, colors.black),
-        ("PADDING", (0,0), (-1,-1), 5),
-        ("VALIGN", (0,0), (-1,-1), "TOP"),
-    ]))
-    elements.append(bank_t)
+            "1. Our responsibility ceases as soon as the goods are handed over to Carrier/customer.<br/>"
+            "2. All Disputes subject to Chandigarh Juridiction.<br/>"
+            "3. Interest @ Rs.24% p.a. will be charged on all amounts remained unpaid after 15 days..",
+            ps("tc",8)),
+    ]], colWidths=[W])
+    tc.setStyle(ts(box(0.5), pad(5)))
+    elements.append(tc)
 
     doc.build(elements)
     return response
