@@ -313,7 +313,7 @@ def invoice_pdf(request, pk):
     elements.append(order)
 
     # ── 6. ITEMS TABLE ────────────────────────────────────
-    # Cols: S.NO | Description | HSN/SAC | Qty | UOM | Rate | Taxable ₹ | CGST R | CGST A | UTGST R | UTGST A | IGST R | IGST A
+    # Cols: S.NO | Description | HSN/SAC | Qty | UOM | Rate | Taxable Rs. | CGST R | CGST A | UTGST R | UTGST A | IGST R | IGST A
     # 13 columns, NO DIS, NO last Amount col (matches sample image)
     cw = [7*mm, 42*mm, 16*mm, 9*mm, 9*mm, 15*mm, 18*mm,
           9*mm, 15*mm, 9*mm, 15*mm, 9*mm, 17*mm]
@@ -327,14 +327,14 @@ def invoice_pdf(request, pk):
 
     hdr0 = [H("S.\nNO","h0"), H("Description of Goods","h1"), H("HSN Code\n/ SAC","h2"),
             H("Qty","h3"), H("UOM","h4"), H("Rate","h5"),
-            H("Taxable\nValue\n₹","h6"),
+            H("Taxable\nValue\nRs.","h6"),
             H("CGST","hcg"),   Paragraph("",ps("hcg2",7)),
             H("UTGST","hug"),  Paragraph("",ps("hug2",7)),
             H("IGST","hig"),   Paragraph("",ps("hig2",7))]
     hdr1 = [Paragraph("",ps(f"hx{i}",7)) for i in range(7)] + [
-            H("Rate\n%","hcgr"), H("Amount\n₹","hcga"),
-            H("Rate\n%","hugr"), H("Amount\n₹","huga"),
-            H("Rate\n%","higr"), H("Amount\n₹","higa")]
+            H("Rate\n%","hcgr"), H("Amount\nRs.","hcga"),
+            H("Rate\n%","hugr"), H("Amount\nRs.","huga"),
+            H("Rate\n%","higr"), H("Amount\nRs.","higa")]
     rows = [hdr0, hdr1]
 
     is_inter     = (invoice.gst_type == 'I')
@@ -418,10 +418,10 @@ def invoice_pdf(request, pk):
     # Words row spans 7 left cols; then CGST-amt | UTGST-amt | IGST-amt in right cols
     wrow = Table([[
         Paragraph(f"Invoice Value (In Words) &nbsp; <b>{words}</b>", ps("ww",8)),
-        Paragraph(f"₹ {total_cgst:.2f}",  ps("wcg",8,align=TA_RIGHT)),
-        Paragraph(f"₹ {total_cgst:.2f}" if not is_inter else "₹ 0.00",
+        Paragraph(f"Rs. {total_cgst:.2f}",  ps("wcg",8,align=TA_RIGHT)),
+        Paragraph(f"Rs. {total_cgst:.2f}" if not is_inter else "Rs. 0.00",
                                                 ps("wug",8,align=TA_RIGHT)),
-        Paragraph(f"₹ {total_igst:.2f}",  ps("wig",8,align=TA_RIGHT)),
+        Paragraph(f"Rs. {total_igst:.2f}",  ps("wig",8,align=TA_RIGHT)),
     ]], colWidths=[W - 3*24*mm, 24*mm, 24*mm, 24*mm])
     wrow.setStyle(ts(box(0.6), pad(4), vmid()))
     elements.append(wrow)
@@ -442,21 +442,21 @@ def invoice_pdf(request, pk):
 
     right_rows = [
         [Paragraph("Total Amount Before Tax", ps("ta1",8)),
-         Paragraph(f"₹", ps("ta1s",8,align=TA_RIGHT)),
+         Paragraph(f"Rs.", ps("ta1s",8,align=TA_RIGHT)),
          Paragraph(f"{total_taxable:.2f}", ps("ta1a",8,align=TA_RIGHT))],
         [Paragraph("ADD: CGST", ps("ta2",8)),
-         Paragraph("₹", ps("ta2s",8,align=TA_RIGHT)),
+         Paragraph("Rs.", ps("ta2s",8,align=TA_RIGHT)),
          Paragraph(f"{total_cgst:.2f}", ps("ta2a",8,align=TA_RIGHT))],
         [Paragraph("ADD: UTGST", ps("ta3",8)),
-         Paragraph("₹", ps("ta3s",8,align=TA_RIGHT)),
+         Paragraph("Rs.", ps("ta3s",8,align=TA_RIGHT)),
          Paragraph(f"{total_cgst:.2f}" if not is_inter else "0.00", ps("ta3a",8,align=TA_RIGHT))],
         [Paragraph("ADD: IGST", ps("ta4",8)),
-         Paragraph("₹", ps("ta4s",8,align=TA_RIGHT)),
+         Paragraph("Rs.", ps("ta4s",8,align=TA_RIGHT)),
          Paragraph(f"{total_igst:.2f}", ps("ta4a",8,align=TA_RIGHT))],
         [Paragraph("Tax Amount : GST", ps("ta5",8)),
-         Paragraph("₹", ps("ta5s",8,align=TA_RIGHT)),
+         Paragraph("Rs.", ps("ta5s",8,align=TA_RIGHT)),
          Paragraph(f"{tax_total:.2f}", ps("ta5a",8,align=TA_RIGHT))],
-        [Paragraph("", ps("ta6",8)), Paragraph("₹", ps("ta6s",8,align=TA_RIGHT)),
+        [Paragraph("", ps("ta6",8)), Paragraph("Rs.", ps("ta6s",8,align=TA_RIGHT)),
          Paragraph("", ps("ta6a",8))],
     ]
     if curr == 'USD' and usd_rate:
@@ -469,7 +469,7 @@ def invoice_pdf(request, pk):
                            Paragraph(f"{total_cad:.2f}",ps("ta8a",8,align=TA_RIGHT))])
     right_rows.append([
         Paragraph("<b>Total Amount After Tax :</b>", ps("taf",9,bold=True)),
-        Paragraph("<b>₹</b>", ps("tafs",9,bold=True,align=TA_RIGHT)),
+        Paragraph("<b>Rs.</b>", ps("tafs",9,bold=True,align=TA_RIGHT)),
         Paragraph(f"<b>{total_inr:.2f}</b>", ps("tafa",9,bold=True,align=TA_RIGHT)),
     ])
 
