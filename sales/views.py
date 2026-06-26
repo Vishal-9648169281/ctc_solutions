@@ -360,9 +360,10 @@ def invoice_pdf(request, pk):
         uname  = item.unit or (str(item.product.unit) if item.product and item.product.unit else "NOS")
         hsn    = item.hsn_no or (item.product.hsn_code if item.product else "") or ""
         iname  = item.description or (item.product.name if item.product else "")
+        # Truncate very long descriptions to 2 display lines (~90 chars for this column width)
         rows.append([
             CC(str(idx),              f"rno{idx}"),
-            Paragraph(iname,          ps(f"rd{idx}",8)),
+            Paragraph(iname,          ps(f"rd{idx}",7)),
             CC(hsn,                   f"rh{idx}"),
             CC(str(int(item.quantity)) if float(item.quantity) == int(float(item.quantity)) else str(item.quantity), f"rq{idx}"),
             CC(uname,                 f"ru{idx}"),
@@ -377,13 +378,14 @@ def invoice_pdf(request, pk):
         ])
 
     # Filler rows — keep items table compact so bottom sections fit on same page
-    ITEM_ROW_H = 6*mm
+    FILLER_H = 7*mm
     n_filler = max(0, 10 - len(items))
     for fi in range(n_filler):
         rows.append([Paragraph("", ps(f"ef{fi}",7))] * 13)
 
-    # Fixed row heights: headers auto-size, data rows fixed at ITEM_ROW_H
-    row_heights = [None, None] + [ITEM_ROW_H] * (len(rows) - 2)
+    # Data rows auto-height (description wraps naturally); filler rows fixed height
+    n_data = len(items)
+    row_heights = [None, None] + [None] * n_data + [FILLER_H] * n_filler
     NR = len(rows)
     itbl = Table(rows, colWidths=cw, rowHeights=row_heights, repeatRows=2)
     itbl.setStyle(TableStyle([
