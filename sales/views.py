@@ -616,7 +616,8 @@ def invoice_whatsapp(request, pk):
         invoice.save(update_fields=['share_token'])
 
     # Build public PDF link
-    base_url = request.build_absolute_uri('/').rstrip('/')
+    from django.conf import settings as django_settings
+    base_url = django_settings.SITE_URL.rstrip('/')
     pdf_link = f"{base_url}/sales/invoices/public/{invoice.share_token}/pdf/"
 
     # Pick best phone: invoice-level override → customer mobile → customer phone
@@ -673,7 +674,7 @@ def invoice_send_email(request, pk):
     if not invoice.share_token:
         invoice.share_token = secrets.token_urlsafe(32)
         invoice.save(update_fields=['share_token'])
-    base_url = request.build_absolute_uri('/').rstrip('/')
+    base_url = django_settings.SITE_URL.rstrip('/')
     pdf_link = f"{base_url}/sales/invoices/public/{invoice.share_token}/pdf/"
 
     # Generate PDF in memory
