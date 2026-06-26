@@ -377,22 +377,8 @@ def invoice_pdf(request, pk):
             CR(f"{igst_amt:.2f}",     f"riga{idx}"),
         ])
 
-    # Filler rows — keep items table compact so bottom sections fit on same page
-    # Filler rows: calculated so items table fills available space on page 1.
-    # Page=294mm, top sections≈120mm, bottom sections≈110mm → items budget=64mm
-    # 2 header rows≈16mm → data+filler budget=48mm
-    FILLER_H     = 6*mm
-    n_real       = len(items)
-    estimated_real_h = n_real * 10          # ~10mm per item (allows 1-2 line wrap)
-    remaining_mm     = max(0, 48 - estimated_real_h)
-    n_filler         = int(remaining_mm / 6)
-    n_filler         = max(2, min(n_filler, 8))   # clamp 2-8
-    for fi in range(n_filler):
-        rows.append([Paragraph("", ps(f"ef{fi}",7))] * 13)
-
-    # Data rows: auto-height so long descriptions wrap naturally across lines.
-    # Filler rows: fixed 6mm height.
-    row_heights = [None, None] + [None] * n_real + [FILLER_H] * n_filler
+    # Data rows only — no filler rows here; FillPageTable adds them dynamically
+    row_heights = [None, None] + [None] * len(items)
     NR = len(rows)
     itbl = Table(rows, colWidths=cw, rowHeights=row_heights, repeatRows=2)
     itbl.setStyle(TableStyle([
@@ -401,20 +387,65 @@ def invoice_pdf(request, pk):
         ("FONTSIZE",   (0,0),  (-1,-1),  8),
         ("ALIGN",      (0,0),  (-1,-1),  "CENTER"),
         ("ROWBACKGROUNDS",(0,2),(-1,NR-1),[colors.white, colors.HexColor("#f4f6fc")]),
-        # Span non-split headers over 2 rows
         ("SPAN",(0,0),(0,1)), ("SPAN",(1,0),(1,1)), ("SPAN",(2,0),(2,1)),
         ("SPAN",(3,0),(3,1)), ("SPAN",(4,0),(4,1)), ("SPAN",(5,0),(5,1)),
         ("SPAN",(6,0),(6,1)),
-        # GST group spans in row 0
-        ("SPAN",(7,0),(8,0)),  # CGST
-        ("SPAN",(9,0),(10,0)), # UTGST
-        ("SPAN",(11,0),(12,0)),# IGST
-        # Thicker borders at GST group starts
+        ("SPAN",(7,0),(8,0)), ("SPAN",(9,0),(10,0)), ("SPAN",(11,0),(12,0)),
         ("LINEBEFORE",(7,0),(-1,-1),0.6,BK),
         ("LINEBEFORE",(9,0),(-1,-1),0.6,BK),
         ("LINEBEFORE",(11,0),(-1,-1),0.6,BK),
+        # No bottom border — FillPageTable continues the table visually
+        ("LINEBELOW",(0,NR-1),(-1,NR-1),0,colors.white),
     ]))
     elements.append(itbl)
+
+    # ── Custom flowable: fills remaining page space with empty table rows ──
+    from reportlab.platypus import Flowable as _Flowable
+    _col_widths = list(cw)
+    _col_w_total = W
+    _FILLER_H = 6*mm
+    _BK_ALT = colors.HexColor("#f4f6fc")
+
+    class FillPageTable(_Flowable):
+        """Draws empty grid rows to fill remaining page height above reserved space."""
+        def __init__(self, reserve_h):
+            _Flowable.__init__(self)
+            self.reserve_h = reserve_h
+            self._n = 0
+            self._h = 0
+        def wrap(self, aW, aH):
+            usable = max(0, aH - self.reserve_h)
+            self._n = max(0, int(usable / _FILLER_H))
+            self._h = self._n * _FILLER_H
+            return (_col_w_total, self._h)
+        def draw(self):
+            if self._n == 0:
+                return
+            c = self.canv
+            n, rh, W2 = self._n, _FILLER_H, _col_w_total
+            h = n * rh
+            # Alternating row backgrounds
+            for i in range(n):
+                if i % 2 == 1:
+                    c.setFillColor(_BK_ALT)
+                    c.rect(0, i*rh, W2, rh, fill=1, stroke=0)
+            # Outer box (top+sides+bottom)
+            c.setStrokeColor(colors.black)
+            c.setLineWidth(0.6)
+            c.rect(0, 0, W2, h, fill=0, stroke=1)
+            # Row dividers
+            c.setStrokeColor(colors.HexColor("#aaaaaa"))
+            c.setLineWidth(0.25)
+            for i in range(1, n):
+                c.line(0, i*rh, W2, i*rh)
+            # Column dividers
+            x = 0
+            for coli, cw_i in enumerate(_col_widths[:-1]):
+                x += cw_i
+                lw = 0.6 if coli in (6, 8, 10) else 0.25
+                c.setLineWidth(lw)
+                c.setStrokeColor(colors.black if coli in (6, 8, 10) else colors.HexColor("#aaaaaa"))
+                c.line(x, 0, x, h)
 
     # ── 7. INVOICE VALUE IN WORDS + GST TOTALS ROW ───────
     curr       = invoice.currency or 'INR'
@@ -541,9 +572,12 @@ def invoice_pdf(request, pk):
     ]], colWidths=[W])
     tc.setStyle(ts(box(0.5), pad(5)))
 
-    # Keep words row + all bottom sections together on same page as items table
+    # Measure bottom sections height, then insert FillPageTable to fill gap
     from reportlab.platypus import KeepTogether
-    elements.append(KeepTogether([wrow, bottom, cert_sig, tc]))
+    kt = KeepTogether([wrow, bottom, cert_sig, tc])
+    _, kt_h = kt.wrap(W, 9999*mm)
+    elements.append(FillPageTable(reserve_h=kt_h + 1*mm))
+    elements.append(kt)
 
     doc.build(elements)
     return response
