@@ -378,14 +378,24 @@ def invoice_pdf(request, pk):
         ])
 
     # Filler rows — keep items table compact so bottom sections fit on same page
-    FILLER_H = 7*mm
-    n_filler = max(0, 10 - len(items))
+    # Filler rows: scale down as item count grows so page doesn't overflow.
+    # Formula keeps ~10 total rows for short invoices; reduces for longer ones.
+    FILLER_H = 6*mm
+    n_real   = len(items)
+    # Each real item may take ~2 lines average (≈12mm); filler rows are 6mm.
+    # Target items-table height ≈ 90mm (fits comfortably with bottom sections).
+    # 2 header rows ≈ 16mm → remaining ≈ 74mm for data+filler.
+    # Estimated real-rows height: n_real * 10mm; remaining for filler rows:
+    estimated_real_h = n_real * 10        # mm
+    remaining_mm     = max(0, 74 - estimated_real_h)
+    n_filler         = int(remaining_mm / 6)   # 6mm per filler row
+    n_filler         = max(2, min(n_filler, 14))  # clamp: at least 2, at most 14
     for fi in range(n_filler):
         rows.append([Paragraph("", ps(f"ef{fi}",7))] * 13)
 
-    # Data rows auto-height (description wraps naturally); filler rows fixed height
-    n_data = len(items)
-    row_heights = [None, None] + [None] * n_data + [FILLER_H] * n_filler
+    # Data rows: auto-height so long descriptions wrap naturally across lines.
+    # Filler rows: fixed 6mm height.
+    row_heights = [None, None] + [None] * n_real + [FILLER_H] * n_filler
     NR = len(rows)
     itbl = Table(rows, colWidths=cw, rowHeights=row_heights, repeatRows=2)
     itbl.setStyle(TableStyle([
