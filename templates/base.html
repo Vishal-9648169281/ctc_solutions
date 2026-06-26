@@ -594,5 +594,32 @@ function doPrintChoice(choice) {
 </script>
 
 {% block extra_js %}{% endblock %}
+
+<script>
+// Auto uppercase all text inputs and textareas sitewide (except password/email/date/number)
+document.addEventListener('DOMContentLoaded', function () {
+  function applyUppercase(el) {
+    var t = (el.type || '').toLowerCase();
+    if (['password','email','date','time','number','hidden','checkbox','radio','file'].includes(t)) return;
+    if (el.readOnly || el.disabled) return;
+    el.addEventListener('input', function () {
+      var pos = this.selectionStart;
+      this.value = this.value.toUpperCase();
+      try { this.setSelectionRange(pos, pos); } catch(e) {}
+    });
+  }
+  document.querySelectorAll('input, textarea').forEach(applyUppercase);
+  // Handle dynamically added elements (invoice item rows etc.)
+  new MutationObserver(function(mutations) {
+    mutations.forEach(function(m) {
+      m.addedNodes.forEach(function(node) {
+        if (node.nodeType !== 1) return;
+        node.querySelectorAll('input, textarea').forEach(applyUppercase);
+        if (node.matches && node.matches('input, textarea')) applyUppercase(node);
+      });
+    });
+  }).observe(document.body, { childList: true, subtree: true });
+});
+</script>
 </body>
 </html>
