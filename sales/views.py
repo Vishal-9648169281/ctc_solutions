@@ -378,18 +378,15 @@ def invoice_pdf(request, pk):
         ])
 
     # Filler rows — keep items table compact so bottom sections fit on same page
-    # Filler rows: scale down as item count grows so page doesn't overflow.
-    # Formula keeps ~10 total rows for short invoices; reduces for longer ones.
-    FILLER_H = 6*mm
-    n_real   = len(items)
-    # Each real item may take ~2 lines average (≈12mm); filler rows are 6mm.
-    # Target items-table height ≈ 90mm (fits comfortably with bottom sections).
-    # 2 header rows ≈ 16mm → remaining ≈ 74mm for data+filler.
-    # Estimated real-rows height: n_real * 10mm; remaining for filler rows:
-    estimated_real_h = n_real * 10        # mm
-    remaining_mm     = max(0, 74 - estimated_real_h)
-    n_filler         = int(remaining_mm / 6)   # 6mm per filler row
-    n_filler         = max(2, min(n_filler, 14))  # clamp: at least 2, at most 14
+    # Filler rows: calculated so items table fills available space on page 1.
+    # Page=294mm, top sections≈120mm, bottom sections≈110mm → items budget=64mm
+    # 2 header rows≈16mm → data+filler budget=48mm
+    FILLER_H     = 6*mm
+    n_real       = len(items)
+    estimated_real_h = n_real * 10          # ~10mm per item (allows 1-2 line wrap)
+    remaining_mm     = max(0, 48 - estimated_real_h)
+    n_filler         = int(remaining_mm / 6)
+    n_filler         = max(2, min(n_filler, 8))   # clamp 2-8
     for fi in range(n_filler):
         rows.append([Paragraph("", ps(f"ef{fi}",7))] * 13)
 
