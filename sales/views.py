@@ -246,12 +246,12 @@ def invoice_pdf(request, pk):
     # ── 1. TOP STRIP: UDYAM | TAX INVOICE | Original For Buyer ──
     top = Table([[
         Paragraph("UDYAM REG. NO : UDYAM-CH-01-0003053", ps("ud", 7, color=GRY)),
-        Paragraph("<b>TAX  INVOICE</b>", ps("ti", 14, bold=True, align=TA_CENTER, color=BLUE)),
+        Paragraph("<b>TAX  INVOICE</b>", ps("ti", 20, bold=True, align=TA_CENTER, color=BLUE)),
         Paragraph("Original For Buyer", ps("ofb", 7, align=TA_RIGHT, color=GRY)),
     ]], colWidths=[W*0.30, W*0.40, W*0.30])
     top.setStyle(ts(pad(2), vmid()))
     elements.append(top)
-    elements.append(HRFlowable(width=W, thickness=1.2, color=BLUE, spaceAfter=2))
+    elements.append(HRFlowable(width=W, thickness=1.0, color=BK, spaceAfter=2))
 
     # ── 2. COMPANY LOGO (full width) ──────────────────────
     logo_path = os.path.join(settings.BASE_DIR, "company_bill_top_logo.png")
@@ -262,8 +262,6 @@ def invoice_pdf(request, pk):
             orig_w, orig_h = im.size
         logo_img = RLImage(logo_path, width=W, height=W * orig_h / orig_w)
         elements.append(logo_img)
-    elements.append(Spacer(1, 1*mm))
-
     # ── 3. GSTIN / INVOICE INFO ───────────────────────────
     inv_date = invoice.invoice_date.strftime("%d-%m-%Y") if hasattr(invoice.invoice_date, "strftime") else str(invoice.invoice_date)
     rc_text  = "Yes" if invoice.reverse_charge == "Y" else "No"
@@ -277,7 +275,7 @@ def invoice_pdf(request, pk):
         [Paragraph(f"Invoice Date &nbsp;&nbsp;&nbsp; : <b>{inv_date}</b>", ps("i7",8,bold=True)),
          Paragraph(f"Place OF Supply : {invoice.place_of_supply or ''}",   ps("i8",8))],
     ], colWidths=[W*0.50, W*0.50])
-    info.setStyle(ts(box(), grid(), pad(3), vmid()))
+    info.setStyle(ts(box(0.5), grid(0.3), pad(3), vmid()))
     elements.append(info)
 
     # ── 4. PARTY: BILLED TO  |  SHIPPED TO ───────────────
@@ -294,7 +292,7 @@ def invoice_pdf(request, pk):
         [Paragraph(f"State Code : {state_code}",ps("p7",8)), Paragraph("State Code :", ps("p8",8))],
         [Paragraph(f"GSTIN Number :  {cust.gstin or ''}",ps("p9",8)), Paragraph("GSTIN Number :", ps("p10",8))],
     ], colWidths=[half, half])
-    party.setStyle(ts(box(), grid(0.2), pad(2), vmid(),
+    party.setStyle(ts(box(0.5), grid(0.3), pad(2), vmid(),
         ("BACKGROUND",(0,0),(-1,0), LBLU),
         ("LINEAFTER",(0,0),(0,-1),0.5,BK),
         ("FONTNAME",(0,0),(-1,0),"Helvetica-Bold"),
@@ -310,7 +308,7 @@ def invoice_pdf(request, pk):
         [Paragraph(f"ORDER DATE : {ord_d}", ps("o3",8)),
          Paragraph(f"G.R.DATE : {gr_d}",   ps("o4",8))],
     ], colWidths=[W*0.50, W*0.50])
-    order.setStyle(ts(box(), grid(0.2), pad(3), vmid()))
+    order.setStyle(ts(box(0.5), grid(0.3), pad(3), vmid()))
     elements.append(order)
 
     # ── 6. ITEMS TABLE ────────────────────────────────────
@@ -582,7 +580,15 @@ def invoice_pdf(request, pk):
     elements.append(FillPageTable(reserve_h=reserve))
     elements.append(KeepTogether([wrow, bottom, cert_sig, tc]))
 
-    doc.build(elements)
+    # Draw thin black border 1mm from page edge on every page
+    def draw_page_border(canvas, doc):
+        canvas.saveState()
+        canvas.setStrokeColor(colors.black)
+        canvas.setLineWidth(0.5)
+        canvas.rect(1*mm, 1*mm, A4[0]-2*mm, A4[1]-2*mm, fill=0)
+        canvas.restoreState()
+
+    doc.build(elements, onFirstPage=draw_page_border, onLaterPages=draw_page_border)
     return response
 
 
