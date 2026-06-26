@@ -61,6 +61,9 @@ class SalesInvoice(models.Model):
     country_of_destination = models.CharField(max_length=100, blank=True)
     shipping_bill_no = models.CharField(max_length=50, blank=True)
     lut_number = models.CharField(max_length=50, blank=True)
+    customer_mobile = models.CharField(max_length=15, blank=True)
+    customer_email  = models.CharField(max_length=200, blank=True)
+    share_token     = models.CharField(max_length=64, blank=True, unique=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

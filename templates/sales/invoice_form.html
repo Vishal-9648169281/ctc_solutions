@@ -54,13 +54,19 @@
           <select name="customer" id="customerSelect" class="form-select form-select-sm" required onchange="onCustomerChange(this)">
             <option value="">-- Select Customer --</option>
             {% for c in customers %}
-            <option value="{{ c.pk }}" data-mobile="{{ c.mobile|default:'' }}" data-gst-type="{{ c.gst_type|default:'W' }}"{% if edit_mode and invoice.customer_id == c.pk %} selected{% endif %}>{{ c.name }}</option>
+            <option value="{{ c.pk }}" data-mobile="{{ c.mobile|default:c.phone|default:'' }}" data-email="{{ c.email|default:'' }}" data-gst-type="{{ c.gst_type|default:'W' }}"{% if edit_mode and invoice.customer_id == c.pk %} selected{% endif %}>{{ c.name }}</option>
             {% endfor %}
           </select>
         </div>
         <div class="col-md-2">
-          <label class="form-label-sm">Mobile</label>
-          <input type="text" id="inv_mobile" class="form-control form-control-sm" readonly placeholder="Auto-filled">
+          <label class="form-label-sm">Mobile <span class="text-muted" style="font-size:.7rem">(for WhatsApp)</span></label>
+          <input type="text" id="inv_mobile" name="customer_mobile" class="form-control form-control-sm" placeholder="Auto-filled / Enter manually"
+            value="{% if edit_mode %}{{ invoice.customer_mobile }}{% endif %}">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label-sm">Email <span class="text-muted" style="font-size:.7rem">(for Email)</span></label>
+          <input type="email" id="inv_email" name="customer_email" class="form-control form-control-sm" placeholder="Auto-filled / Enter manually"
+            value="{% if edit_mode %}{{ invoice.customer_email }}{% endif %}">
         </div>
         <div class="col-md-2">
           <label class="form-label-sm">GST Type</label>
@@ -369,11 +375,22 @@ function calcTotal() {
 // ── Customer change: auto-fill mobile + GST type ─────────────
 function onCustomerChange(sel) {
     const opt = sel.options[sel.selectedIndex];
-    document.getElementById('inv_mobile').value = opt.dataset.mobile || '';
+    const mobileEl = document.getElementById('inv_mobile');
+    const emailEl  = document.getElementById('inv_email');
+    // Only auto-fill if field is empty or was previously auto-filled
+    if (opt.dataset.mobile) mobileEl.value = opt.dataset.mobile;
+    else if (!mobileEl.dataset.manual) mobileEl.value = '';
+    if (opt.dataset.email) emailEl.value = opt.dataset.email;
+    else if (!emailEl.dataset.manual) emailEl.value = '';
     const gstType = opt.dataset.gstType || 'W';
     document.getElementById(gstType === 'I' ? 'gst_inter' : 'gst_within').checked = true;
     onGstTypeChange();
 }
+// Mark fields as manually edited so auto-fill doesn't overwrite
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('inv_mobile').addEventListener('input', function(){ this.dataset.manual = '1'; });
+    document.getElementById('inv_email').addEventListener('input',  function(){ this.dataset.manual = '1'; });
+});
 
 // ── GST type toggle: show label in tax header (visual only) ──
 function onGstTypeChange() {

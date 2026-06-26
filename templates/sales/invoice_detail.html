@@ -6,10 +6,16 @@
         <h5><i class="fa fa-file-invoice-dollar me-2"></i>Invoice &mdash; {{ invoice.invoice_number }}</h5>
         <div class="page-breadcrumb">Sales &rsaquo; Invoices &rsaquo; {{ invoice.invoice_number }}</div>
     </div>
-    <div class="d-flex gap-2">
+    <div class="d-flex gap-2 flex-wrap">
         <a href="/sales/invoices/" class="btn-ctc-outline"><i class="fa fa-arrow-left me-1"></i>Back</a>
         <a href="/sales/invoices/{{ invoice.pk }}/edit/" class="btn-ctc-outline"><i class="fa fa-pencil me-1"></i>Modify</a>
         <button onclick="ctcPrint('/sales/invoices/{{ invoice.pk }}/pdf/')" class="btn-ctc"><i class="fa fa-print me-1"></i>Print / PDF</button>
+        <button onclick="sendWhatsApp({{ invoice.pk }})" class="btn" style="background:#25D366;color:#fff;border:none;border-radius:6px;padding:6px 14px;cursor:pointer;font-size:14px;">
+          <i class="fab fa-whatsapp me-1"></i>WhatsApp
+        </button>
+        <button onclick="openEmailModal({{ invoice.pk }}, '{{ invoice.customer_email|default:invoice.customer.email }}')" class="btn" style="background:#1a237e;color:#fff;border:none;border-radius:6px;padding:6px 14px;cursor:pointer;font-size:14px;">
+          <i class="fa fa-envelope me-1"></i>Email
+        </button>
     </div>
 </div>
 <div class="ctc-card">
@@ -74,4 +80,70 @@
         </div>
     </div>
 </div>
+
+<!-- Email Modal -->
+<div class="modal fade" id="emailModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header" style="background:#1a237e;color:#fff;">
+        <h5 class="modal-title"><i class="fa fa-envelope me-2"></i>Send Invoice by Email</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label fw-bold">Recipient Email Address</label>
+          <input type="email" id="emailTo" class="form-control" placeholder="customer@example.com">
+          <div class="form-text">Invoice PDF will be attached automatically.</div>
+        </div>
+        <div id="emailStatus" class="mt-2"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn" style="background:#1a237e;color:#fff;" onclick="submitEmail()">
+          <i class="fa fa-paper-plane me-1"></i>Send Email
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+var _emailInvoicePk = null;
+
+function sendWhatsApp(pk) {
+  fetch('/sales/invoices/' + pk + '/whatsapp/')
+    .then(r => r.json())
+    .then(data => {
+      if (data.url) window.open(data.url, '_blank');
+      else alert('Could not generate WhatsApp link.');
+    });
+}
+
+function openEmailModal(pk, defaultEmail) {
+  _emailInvoicePk = pk;
+  document.getElementById('emailTo').value = defaultEmail || '';
+  document.getElementById('emailStatus').innerHTML = '';
+  new bootstrap.Modal(document.getElementById('emailModal')).show();
+}
+
+function submitEmail() {
+  var email = document.getElementById('emailTo').value.trim();
+  if (!email) { alert('Please enter an email address.'); return; }
+  var statusEl = document.getElementById('emailStatus');
+  statusEl.innerHTML = '<div class="alert alert-info py-2"><i class="fa fa-spinner fa-spin me-1"></i>Sending...</div>';
+  var form = new FormData();
+  form.append('email', email);
+  form.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+  fetch('/sales/invoices/' + _emailInvoicePk + '/send-email/', { method: 'POST', body: form })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        statusEl.innerHTML = '<div class="alert alert-success py-2"><i class="fa fa-check me-1"></i>' + data.message + '</div>';
+        setTimeout(() => bootstrap.Modal.getInstance(document.getElementById('emailModal')).hide(), 2000);
+      } else {
+        statusEl.innerHTML = '<div class="alert alert-danger py-2"><i class="fa fa-times me-1"></i>' + (data.error || 'Failed to send.') + '</div>';
+      }
+    });
+}
+</script>
 {% endblock %}

@@ -1,6 +1,6 @@
 from decimal import Decimal
 from django.conf import settings
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -87,6 +87,8 @@ def invoice_add(request):
                     add_less2_label=request.POST.get("add_less2_label", ""),
                     add_less2=Decimal(str(request.POST.get("add_less2", 0) or 0)),
                     bill_discount_pct=Decimal(str(request.POST.get("bill_discount_pct", 0) or 0)),
+                    customer_mobile=request.POST.get("customer_mobile", "").strip(),
+                    customer_email=request.POST.get("customer_email", "").strip(),
                     subtotal=0, tax_amount=0, total_amount=0
                 )
                 product_ids = request.POST.getlist("product[]")
@@ -208,13 +210,13 @@ def invoice_pdf(request, pk):
     response = HttpResponse(content_type="application/pdf")
     response["Content-Disposition"] = f"inline; filename=Invoice_{invoice.invoice_number}.pdf"
 
-    LM = RM = 2*mm
+    LM = RM = 1*mm
     doc = SimpleDocTemplate(
         response, pagesize=A4,
         leftMargin=LM, rightMargin=RM,
-        topMargin=1*mm, bottomMargin=2*mm
+        topMargin=1*mm, bottomMargin=0.5*mm
     )
-    W   = A4[0] - LM - RM          # usable width ≈ 202mm
+    W   = A4[0] - LM - RM
     elements = []
 
     # ── Style helper ────────────────────────────────────────
@@ -245,13 +247,12 @@ def invoice_pdf(request, pk):
 
     # ── 1. TOP STRIP: UDYAM | TAX INVOICE | Original For Buyer ──
     top = Table([[
-        Paragraph("UDYAM REG. NO : UDYAM-CH-01-0003053", ps("ud", 7, color=GRY)),
+        Paragraph("<b>UDYAM REG. NO : UDYAM-CH-01-0003053</b>", ps("ud", 9, bold=True, color=BK)),
         Paragraph("<b>TAX  INVOICE</b>", ps("ti", 20, bold=True, align=TA_CENTER, color=BLUE)),
-        Paragraph("Original For Buyer", ps("ofb", 7, align=TA_RIGHT, color=GRY)),
+        Paragraph("<b>Original For Buyer</b>", ps("ofb", 9, bold=True, align=TA_RIGHT, color=BK)),
     ]], colWidths=[W*0.30, W*0.40, W*0.30])
     top.setStyle(ts(pad(2), vmid()))
     elements.append(top)
-    elements.append(HRFlowable(width=W, thickness=1.0, color=BK, spaceAfter=2))
 
     # ── 2. COMPANY LOGO (full width) ──────────────────────
     logo_path = os.path.join(settings.BASE_DIR, "company_bill_top_logo.png")
@@ -266,14 +267,14 @@ def invoice_pdf(request, pk):
     inv_date = invoice.invoice_date.strftime("%d-%m-%Y") if hasattr(invoice.invoice_date, "strftime") else str(invoice.invoice_date)
     rc_text  = "Yes" if invoice.reverse_charge == "Y" else "No"
     info = Table([
-        [Paragraph(f"GSTIN Number : <b>04ALVPK9235D1ZW</b>",         ps("i1",8)),
-         Paragraph(f"Transportation Mode : {invoice.transport or ''}",ps("i2",8))],
-        [Paragraph(f"Tax is Payable on Reverse Charge(Yes/No) : {rc_text}", ps("i3",8)),
-         Paragraph(f"Veh. No : {invoice.vehicle_number or ''}",       ps("i4",8))],
-        [Paragraph(f"Invoice Serial Number : <b>{invoice.invoice_number}</b>", ps("i5",8,bold=True)),
-         Paragraph("Date &amp; Time of Supply :  -  -",               ps("i6",8))],
-        [Paragraph(f"Invoice Date &nbsp;&nbsp;&nbsp; : <b>{inv_date}</b>", ps("i7",8,bold=True)),
-         Paragraph(f"Place OF Supply : {invoice.place_of_supply or ''}",   ps("i8",8))],
+        [Paragraph(f"GSTIN Number : <b>04ALVPK9235D1ZW</b>",         ps("i1",9)),
+         Paragraph(f"Transportation Mode : {invoice.transport or ''}",ps("i2",9))],
+        [Paragraph(f"Tax is Payable on Reverse Charge(Yes/No) : {rc_text}", ps("i3",9)),
+         Paragraph(f"Veh. No : {invoice.vehicle_number or ''}",       ps("i4",9))],
+        [Paragraph(f"Invoice Serial Number : <b>{invoice.invoice_number}</b>", ps("i5",9,bold=True)),
+         Paragraph("Date &amp; Time of Supply :  -  -",               ps("i6",9))],
+        [Paragraph(f"Invoice Date &nbsp;&nbsp;&nbsp; : <b>{inv_date}</b>", ps("i7",9,bold=True)),
+         Paragraph(f"Place OF Supply : {invoice.place_of_supply or ''}",   ps("i8",9))],
     ], colWidths=[W*0.50, W*0.50])
     info.setStyle(ts(box(0.5), grid(0.3), pad(3), vmid()))
     elements.append(info)
@@ -283,14 +284,14 @@ def invoice_pdf(request, pk):
     half = W / 2
     state_code = (cust.gstin[:2] if cust.gstin and len(cust.gstin) >= 2 else "") + (" -" + cust.state if cust.state else "")
     party = Table([
-        [Paragraph("<b>Details of Receiver (Billed to)</b>",   ps("pb1",8,bold=True)),
-         Paragraph("<b>Details of Consignee (Shipped to)</b>", ps("pb2",8,bold=True))],
-        [Paragraph(f"Name : <b>{cust.name}</b>",  ps("p1",8)), Paragraph("Name :",   ps("p2",8))],
-        [Paragraph(f"Address : {cust.address or ''}", ps("p3",8)), Paragraph("Address :", ps("p4",8))],
-        [Paragraph("",ps("p5b",8)), Paragraph("",ps("p6b",8))],
-        [Paragraph(f"State : {cust.state or ''}",ps("p5",8)),  Paragraph("State :",  ps("p6",8))],
-        [Paragraph(f"State Code : {state_code}",ps("p7",8)), Paragraph("State Code :", ps("p8",8))],
-        [Paragraph(f"GSTIN Number :  {cust.gstin or ''}",ps("p9",8)), Paragraph("GSTIN Number :", ps("p10",8))],
+        [Paragraph("<b>Details of Receiver (Billed to)</b>",   ps("pb1",9,bold=True)),
+         Paragraph("<b>Details of Consignee (Shipped to)</b>", ps("pb2",9,bold=True))],
+        [Paragraph(f"Name : <b>{cust.name}</b>",  ps("p1",9)), Paragraph("Name :",   ps("p2",9))],
+        [Paragraph(f"Address : {cust.address or ''}", ps("p3",9)), Paragraph("Address :", ps("p4",9))],
+        [Paragraph("",ps("p5b",9)), Paragraph("",ps("p6b",9))],
+        [Paragraph(f"State : {cust.state or ''}",ps("p5",9)),  Paragraph("State :",  ps("p6",9))],
+        [Paragraph(f"State Code : {state_code}",ps("p7",9)), Paragraph("State Code :", ps("p8",9))],
+        [Paragraph(f"GSTIN Number :  {cust.gstin or ''}",ps("p9",9)), Paragraph("GSTIN Number :", ps("p10",9))],
     ], colWidths=[half, half])
     party.setStyle(ts(box(0.5), grid(0.3), pad(2), vmid(),
         ("BACKGROUND",(0,0),(-1,0), LBLU),
@@ -303,10 +304,10 @@ def invoice_pdf(request, pk):
     gr_d  = invoice.gr_date.strftime("%d-%m-%Y")    if invoice.gr_date    else "- -"
     ord_d = invoice.order_date.strftime("%d-%m-%Y") if invoice.order_date else "- -"
     order = Table([
-        [Paragraph(f"ORDER NO. &nbsp;&nbsp;: {invoice.order_number or ''}",ps("o1",8)),
-         Paragraph(f"G.R.NO. : {invoice.gr_number or ''}",                 ps("o2",8))],
-        [Paragraph(f"ORDER DATE : {ord_d}", ps("o3",8)),
-         Paragraph(f"G.R.DATE : {gr_d}",   ps("o4",8))],
+        [Paragraph(f"ORDER NO. &nbsp;&nbsp;: {invoice.order_number or ''}",ps("o1",9)),
+         Paragraph(f"G.R.NO. : {invoice.gr_number or ''}",                 ps("o2",9))],
+        [Paragraph(f"ORDER DATE : {ord_d}", ps("o3",9)),
+         Paragraph(f"G.R.DATE : {gr_d}",   ps("o4",9))],
     ], colWidths=[W*0.50, W*0.50])
     order.setStyle(ts(box(0.5), grid(0.3), pad(3), vmid()))
     elements.append(order)
@@ -320,9 +321,9 @@ def invoice_pdf(request, pk):
     # 7+42+16+9+9+15+18+9+15+9+15+9+17 = 190mm — pad description to fill W
     cw[1] = W - sum(cw) + cw[1]
 
-    def H(t,n):  return Paragraph(f"<b>{t}</b>", ps(n,6,bold=True,align=TA_CENTER))
-    def CR(t,n): return Paragraph(t, ps(n,8,align=TA_RIGHT))
-    def CC(t,n): return Paragraph(t, ps(n,8,align=TA_CENTER))
+    def H(t,n):  return Paragraph(f"<b>{t}</b>", ps(n,7,bold=True,align=TA_CENTER))
+    def CR(t,n): return Paragraph(t, ps(n,9,align=TA_RIGHT))
+    def CC(t,n): return Paragraph(t, ps(n,9,align=TA_CENTER))
 
     hdr0 = [H("S.\nNO","h0"), H("Description of Goods","h1"), H("HSN Code\n/ SAC","h2"),
             H("Qty","h3"), H("UOM","h4"), H("Rate","h5"),
@@ -361,7 +362,10 @@ def invoice_pdf(request, pk):
         # Truncate very long descriptions to 2 display lines (~90 chars for this column width)
         rows.append([
             CC(str(idx),              f"rno{idx}"),
-            Paragraph(iname,          ps(f"rd{idx}",7)),
+            Paragraph(iname,          ParagraphStyle(f"rd{idx}", fontSize=9,
+                          fontName="Helvetica", alignment=TA_LEFT,
+                          leading=11, spaceAfter=0, spaceBefore=0,
+                          splitLongWords=0, wordWrap='LTR')),
             CC(hsn,                   f"rh{idx}"),
             CC(str(int(item.quantity)) if float(item.quantity) == int(float(item.quantity)) else str(item.quantity), f"rq{idx}"),
             CC(uname,                 f"ru{idx}"),
@@ -375,75 +379,7 @@ def invoice_pdf(request, pk):
             CR(f"{igst_amt:.2f}",     f"riga{idx}"),
         ])
 
-    # Data rows only — no filler rows here; FillPageTable adds them dynamically
-    row_heights = [None, None] + [None] * len(items)
-    NR = len(rows)
-    itbl = Table(rows, colWidths=cw, rowHeights=row_heights, repeatRows=2)
-    itbl.setStyle(TableStyle([
-        box(0.6), grid(0.25), pad(3), vmid(),
-        ("BACKGROUND", (0,0),  (-1,1),   LBLU),
-        ("FONTSIZE",   (0,0),  (-1,-1),  8),
-        ("ALIGN",      (0,0),  (-1,-1),  "CENTER"),
-        ("ROWBACKGROUNDS",(0,2),(-1,NR-1),[colors.white, colors.HexColor("#f4f6fc")]),
-        ("SPAN",(0,0),(0,1)), ("SPAN",(1,0),(1,1)), ("SPAN",(2,0),(2,1)),
-        ("SPAN",(3,0),(3,1)), ("SPAN",(4,0),(4,1)), ("SPAN",(5,0),(5,1)),
-        ("SPAN",(6,0),(6,1)),
-        ("SPAN",(7,0),(8,0)), ("SPAN",(9,0),(10,0)), ("SPAN",(11,0),(12,0)),
-        ("LINEBEFORE",(7,0),(-1,-1),0.6,BK),
-        ("LINEBEFORE",(9,0),(-1,-1),0.6,BK),
-        ("LINEBEFORE",(11,0),(-1,-1),0.6,BK),
-        # No bottom border — FillPageTable continues the table visually
-        ("LINEBELOW",(0,NR-1),(-1,NR-1),0,colors.white),
-    ]))
-    elements.append(itbl)
-
-    # ── Custom flowable: fills remaining page space with empty table rows ──
-    from reportlab.platypus import Flowable as _Flowable
-    _col_widths = list(cw)
-    _col_w_total = W
-    _FILLER_H = 6*mm
-    _BK_ALT = colors.HexColor("#f4f6fc")
-
-    class FillPageTable(_Flowable):
-        """Draws empty grid rows to fill remaining page height above reserved space."""
-        def __init__(self, reserve_h):
-            _Flowable.__init__(self)
-            self.reserve_h = reserve_h
-            self._n = 0
-            self._h = 0
-        def wrap(self, aW, aH):
-            usable = max(0, aH - self.reserve_h)
-            self._n = max(0, int(usable / _FILLER_H))
-            self._h = self._n * _FILLER_H
-            return (_col_w_total, self._h)
-        def draw(self):
-            if self._n == 0:
-                return
-            c = self.canv
-            n, rh, W2 = self._n, _FILLER_H, _col_w_total
-            h = n * rh
-            # Alternating row backgrounds
-            for i in range(n):
-                if i % 2 == 1:
-                    c.setFillColor(_BK_ALT)
-                    c.rect(0, i*rh, W2, rh, fill=1, stroke=0)
-            # Outer box (top+sides+bottom)
-            c.setStrokeColor(colors.black)
-            c.setLineWidth(0.6)
-            c.rect(0, 0, W2, h, fill=0, stroke=1)
-            # Row dividers
-            c.setStrokeColor(colors.HexColor("#aaaaaa"))
-            c.setLineWidth(0.25)
-            for i in range(1, n):
-                c.line(0, i*rh, W2, i*rh)
-            # Column dividers
-            x = 0
-            for coli, cw_i in enumerate(_col_widths[:-1]):
-                x += cw_i
-                lw = 0.6 if coli in (6, 8, 10) else 0.25
-                c.setLineWidth(lw)
-                c.setStrokeColor(colors.black if coli in (6, 8, 10) else colors.HexColor("#aaaaaa"))
-                c.line(x, 0, x, h)
+    # Bottom sections are built below; items table is built after measuring everything.
 
     # ── 7. INVOICE VALUE IN WORDS + GST TOTALS ROW ───────
     curr       = invoice.currency or 'INR'
@@ -461,10 +397,10 @@ def invoice_pdf(request, pk):
     # Words row — left spans all cols except the 3 GST Amount cols
     _wleft = W - cw[8] - cw[10] - cw[12]
     wrow = Table([[
-        Paragraph(f"Invoice Value (In Words) &nbsp; <b>{words}</b>", ps("ww",8)),
-        Paragraph(f"Rs. {total_cgst:.2f}",                                   ps("wcg",8,align=TA_RIGHT)),
-        Paragraph(f"Rs. {total_cgst:.2f}" if not is_inter else "Rs. 0.00",  ps("wug",8,align=TA_RIGHT)),
-        Paragraph(f"Rs. {total_igst:.2f}",                                   ps("wig",8,align=TA_RIGHT)),
+        Paragraph(f"Invoice Value (In Words) &nbsp; <b>{words}</b>", ps("ww",9)),
+        Paragraph(f"Rs. {total_cgst:.2f}",                                   ps("wcg",9,align=TA_RIGHT)),
+        Paragraph(f"Rs. {total_cgst:.2f}" if not is_inter else "Rs. 0.00",  ps("wug",9,align=TA_RIGHT)),
+        Paragraph(f"Rs. {total_igst:.2f}",                                   ps("wig",9,align=TA_RIGHT)),
     ]], colWidths=[_wleft, cw[8], cw[10], cw[12]])
     wrow.setStyle(ts(box(0.6), pad(4), vmid()))
 
@@ -473,51 +409,51 @@ def invoice_pdf(request, pk):
     due_str   = invoice.due_date.strftime("%d-%m-%Y") if invoice.due_date else ""
 
     bank_tbl = Table([
-        [Paragraph("<b>BANK NAME</b>", ps("bk1",8,bold=True)), Paragraph(":", ps("bkc",8)), Paragraph("<b>ICICI BANK</b>", ps("bk1v",8,bold=True))],
-        [Paragraph("A/c No",           ps("bk2",8)),           Paragraph(":", ps("bkc2",8)), Paragraph("632205005712",      ps("bk2v",8))],
-        [Paragraph("BRANCH",           ps("bk3",8)),           Paragraph(":", ps("bkc3",8)), Paragraph("SECTOR 35C",        ps("bk3v",8))],
-        [Paragraph("IFSC CODE",        ps("bk4",8)),           Paragraph(":", ps("bkc4",8)), Paragraph("ICIC0006322",       ps("bk4v",8))],
+        [Paragraph("<b>BANK NAME</b>", ps("bk1",9,bold=True)), Paragraph(":", ps("bkc",9)), Paragraph("<b>ICICI BANK</b>", ps("bk1v",9,bold=True))],
+        [Paragraph("A/c No",           ps("bk2",9)),           Paragraph(":", ps("bkc2",9)), Paragraph("632205005712",      ps("bk2v",9))],
+        [Paragraph("BRANCH",           ps("bk3",9)),           Paragraph(":", ps("bkc3",9)), Paragraph("SECTOR 35C",        ps("bk3v",9))],
+        [Paragraph("IFSC CODE",        ps("bk4",9)),           Paragraph(":", ps("bkc4",9)), Paragraph("ICIC0006322",       ps("bk4v",9))],
     ], colWidths=[22*mm, 4*mm, None])
     bank_tbl.setStyle(TableStyle([("TOPPADDING",(0,0),(-1,-1),1),("BOTTOMPADDING",(0,0),(-1,-1),1),
                                    ("LEFTPADDING",(0,0),(-1,-1),0),("RIGHTPADDING",(0,0),(-1,-1),2),
                                    ("VALIGN",(0,0),(-1,-1),"MIDDLE")]))
 
     left_cell = [
-        Paragraph("<b>REMARKS:</b>", ps("rem",8,bold=True)),
-        Paragraph(invoice.notes or "", ps("remn",8)),
+        Paragraph("<b>REMARKS:</b>", ps("rem",9,bold=True)),
+        Paragraph(invoice.notes or "", ps("remn",9)),
         Spacer(1,3*mm),
-        Paragraph(f"DUE DATE : {due_str}", ps("dd",8)),
+        Paragraph(f"DUE DATE : {due_str}", ps("dd",9)),
         Spacer(1,3*mm),
         bank_tbl,
     ]
 
     right_rows = [
-        [Paragraph("Total Amount Before Tax", ps("ta1",8)),
-         Paragraph(f"Rs.", ps("ta1s",8,align=TA_RIGHT)),
-         Paragraph(f"{total_taxable:.2f}", ps("ta1a",8,align=TA_RIGHT))],
-        [Paragraph("ADD: CGST", ps("ta2",8)),
-         Paragraph("Rs.", ps("ta2s",8,align=TA_RIGHT)),
-         Paragraph(f"{total_cgst:.2f}", ps("ta2a",8,align=TA_RIGHT))],
-        [Paragraph("ADD: UTGST", ps("ta3",8)),
-         Paragraph("Rs.", ps("ta3s",8,align=TA_RIGHT)),
-         Paragraph(f"{total_cgst:.2f}" if not is_inter else "0.00", ps("ta3a",8,align=TA_RIGHT))],
-        [Paragraph("ADD: IGST", ps("ta4",8)),
-         Paragraph("Rs.", ps("ta4s",8,align=TA_RIGHT)),
-         Paragraph(f"{total_igst:.2f}", ps("ta4a",8,align=TA_RIGHT))],
-        [Paragraph("Tax Amount : GST", ps("ta5",8)),
-         Paragraph("Rs.", ps("ta5s",8,align=TA_RIGHT)),
-         Paragraph(f"{tax_total:.2f}", ps("ta5a",8,align=TA_RIGHT))],
-        [Paragraph("", ps("ta6",8)), Paragraph("Rs.", ps("ta6s",8,align=TA_RIGHT)),
-         Paragraph("", ps("ta6a",8))],
+        [Paragraph("Total Amount Before Tax", ps("ta1",9)),
+         Paragraph(f"Rs.", ps("ta1s",9,align=TA_RIGHT)),
+         Paragraph(f"{total_taxable:.2f}", ps("ta1a",9,align=TA_RIGHT))],
+        [Paragraph("ADD: CGST", ps("ta2",9)),
+         Paragraph("Rs.", ps("ta2s",9,align=TA_RIGHT)),
+         Paragraph(f"{total_cgst:.2f}", ps("ta2a",9,align=TA_RIGHT))],
+        [Paragraph("ADD: UTGST", ps("ta3",9)),
+         Paragraph("Rs.", ps("ta3s",9,align=TA_RIGHT)),
+         Paragraph(f"{total_cgst:.2f}" if not is_inter else "0.00", ps("ta3a",9,align=TA_RIGHT))],
+        [Paragraph("ADD: IGST", ps("ta4",9)),
+         Paragraph("Rs.", ps("ta4s",9,align=TA_RIGHT)),
+         Paragraph(f"{total_igst:.2f}", ps("ta4a",9,align=TA_RIGHT))],
+        [Paragraph("Tax Amount : GST", ps("ta5",9)),
+         Paragraph("Rs.", ps("ta5s",9,align=TA_RIGHT)),
+         Paragraph(f"{tax_total:.2f}", ps("ta5a",9,align=TA_RIGHT))],
+        [Paragraph("", ps("ta6",9)), Paragraph("Rs.", ps("ta6s",9,align=TA_RIGHT)),
+         Paragraph("", ps("ta6a",9))],
     ]
     if curr == 'USD' and usd_rate:
-        right_rows.append([Paragraph(f"Exch Rate 1 USD=Rs.{usd_rate:.2f}",ps("ta7",8)),
-                           Paragraph("USD$",ps("ta7s",8,align=TA_RIGHT)),
-                           Paragraph(f"{total_usd:.2f}",ps("ta7a",8,align=TA_RIGHT))])
+        right_rows.append([Paragraph(f"Exch Rate 1 USD=Rs.{usd_rate:.2f}",ps("ta7",9)),
+                           Paragraph("USD$",ps("ta7s",9,align=TA_RIGHT)),
+                           Paragraph(f"{total_usd:.2f}",ps("ta7a",9,align=TA_RIGHT))])
     if curr == 'CAD' and cad_rate:
-        right_rows.append([Paragraph(f"Exch Rate 1 CAD=Rs.{cad_rate:.2f}",ps("ta8",8)),
-                           Paragraph("CAD$",ps("ta8s",8,align=TA_RIGHT)),
-                           Paragraph(f"{total_cad:.2f}",ps("ta8a",8,align=TA_RIGHT))])
+        right_rows.append([Paragraph(f"Exch Rate 1 CAD=Rs.{cad_rate:.2f}",ps("ta8",9)),
+                           Paragraph("CAD$",ps("ta8s",9,align=TA_RIGHT)),
+                           Paragraph(f"{total_cad:.2f}",ps("ta8a",9,align=TA_RIGHT))])
     right_rows.append([
         Paragraph("<b>Total Amount After Tax :</b>", ps("taf",9,bold=True)),
         Paragraph("<b>Rs.</b>", ps("tafs",9,bold=True,align=TA_RIGHT)),
@@ -546,17 +482,43 @@ def invoice_pdf(request, pk):
         ("VALIGN",(0,0),(-1,-1),"TOP"),
     ))
     # ── 9. CERTIFIED + FOR CTC ────────────────────────────
+    stamp_path = os.path.join(settings.BASE_DIR, "signature_stamp.png")
+    if os.path.exists(stamp_path):
+        from reportlab.platypus import Image as RLImage
+        from PIL import Image as PILImage
+        with PILImage.open(stamp_path) as _im:
+            _sw, _sh = _im.size
+        _stamp_h = 28*mm
+        _stamp_w = min(_stamp_h * _sw / _sh, RW - 4)
+        stamp_cell = RLImage(stamp_path, width=_stamp_w, height=_stamp_h)
+    else:
+        stamp_cell = Paragraph("", ps("sigSp",9))
+
+    sig_inner = Table([
+        [Paragraph("<b>For CHANDIGARH TEAM COMPUTERS</b>", ps("sigH",9,bold=True,align=TA_CENTER))],
+        [stamp_cell],
+        [Paragraph("<b>Authorised Signatory</b>", ps("sigF",9,bold=True,align=TA_CENTER))],
+    ], colWidths=[RW - 2], rowHeights=[8*mm, 30*mm, 7*mm])
+    sig_inner.setStyle(TableStyle([
+        ("TOPPADDING",    (0,0),(-1,-1), 2),
+        ("BOTTOMPADDING", (0,0),(-1,-1), 2),
+        ("ALIGN",         (0,0),(-1,-1), "CENTER"),
+        ("VALIGN",        (0,0),(-1,-1), "MIDDLE"),
+        ("LINEABOVE",     (0,2),(-1,2),  0.6, BK),
+    ]))
     cert_sig = Table([[
         Paragraph("Certified that the Particulars given above are true and correct",
-                  ps("cert",8,color=GRY)),
-        Paragraph("<b>For CHANDIGARH TEAM COMPUTERS</b><br/><br/><br/><br/>"
-                  "Authorised Signatory",
-                  ps("sig",8,bold=True,align=TA_CENTER)),
-    ]], colWidths=[W*0.60, W*0.40])
+                  ps("cert",9,color=GRY)),
+        sig_inner,
+    ]], colWidths=[LW, RW])
     cert_sig.setStyle(ts(box(0.5), pad(5), vmid(),
-        ("LINEAFTER",(0,0),(0,0),0.5,BK),
-        ("VALIGN",(0,0),(0,0),"MIDDLE"),
-        ("VALIGN",(1,0),(1,0),"TOP"),
+        ("LINEAFTER", (0,0),(0,0), 0.5, BK),
+        ("VALIGN",    (0,0),(0,0), "MIDDLE"),
+        ("VALIGN",    (1,0),(1,0), "MIDDLE"),
+        ("TOPPADDING",(1,0),(1,0), 3),
+        ("BOTTOMPADDING",(1,0),(1,0), 3),
+        ("LEFTPADDING",(1,0),(1,0), 1),
+        ("RIGHTPADDING",(1,0),(1,0), 1),
     ))
 
     # ── 10. TERMS & CONDITIONS ────────────────────────────
@@ -566,32 +528,180 @@ def invoice_pdf(request, pk):
             "1. Our responsibility ceases as soon as the goods are handed over to Carrier/customer.<br/>"
             "2. All Disputes subject to Chandigarh Juridiction.<br/>"
             "3. Interest @ Rs.24% p.a. will be charged on all amounts remained unpaid after 15 days..",
-            ps("tc",8)),
+            ps("tc",9)),
     ]], colWidths=[W])
     tc.setStyle(ts(box(0.5), pad(5)))
 
-    # Measure each bottom element individually (KeepTogether.wrap needs canv context)
+    # ── Build items table with filler rows inside it (guarantees column alignment) ──
     from reportlab.platypus import KeepTogether
+
+    # Measure bottom sections
     _, h1 = wrow.wrap(W, 9999*mm)
     _, h2 = bottom.wrap(W, 9999*mm)
     _, h3 = cert_sig.wrap(W, 9999*mm)
     _, h4 = tc.wrap(W, 9999*mm)
     reserve = h1 + h2 + h3 + h4 + 1*mm
-    elements.append(FillPageTable(reserve_h=reserve))
+
+    # Measure top elements already in elements[]
+    top_total = 0
+    for el in elements:
+        _, eh = el.wrap(W, 9999*mm)
+        top_total += eh
+
+    # Measure current items rows height (temp table, no filler)
+    _tmp = Table(rows, colWidths=cw)
+    _, items_h = _tmp.wrap(W, 9999*mm)
+
+    # Calculate how many 6mm filler rows fit in remaining space
+    PAGE_H = A4[1] - doc.topMargin - doc.bottomMargin
+    FILLER_H = 6 * mm
+    remaining = PAGE_H - top_total - items_h - reserve
+    n_filler = max(0, int(remaining / FILLER_H))
+    NR_data = len(rows)
+
+    # Add filler rows directly into items table
+    BK_ALT = colors.HexColor("#f4f6fc")
+    for _ in range(n_filler):
+        rows.append([""] * 13)
+
+    NR = len(rows)
+    row_heights = [None, None] + [None] * (NR_data - 2) + [FILLER_H] * n_filler
+    itbl = Table(rows, colWidths=cw, rowHeights=row_heights, repeatRows=2)
+    itbl.setStyle(TableStyle([
+        box(0.6), grid(0.25), pad(3), vmid(),
+        ("BACKGROUND", (0, 0), (-1, 1), LBLU),
+        ("FONTSIZE",   (0, 0), (-1, -1), 9),
+        ("ALIGN",      (0, 0), (-1, -1), "CENTER"),
+        ("ROWBACKGROUNDS", (0, 2), (-1, NR - 1), [colors.white, BK_ALT]),
+        ("SPAN", (0, 0), (0, 1)), ("SPAN", (1, 0), (1, 1)), ("SPAN", (2, 0), (2, 1)),
+        ("SPAN", (3, 0), (3, 1)), ("SPAN", (4, 0), (4, 1)), ("SPAN", (5, 0), (5, 1)),
+        ("SPAN", (6, 0), (6, 1)),
+        ("SPAN", (7, 0), (8, 0)), ("SPAN", (9, 0), (10, 0)), ("SPAN", (11, 0), (12, 0)),
+        ("LINEBEFORE", (7, 0), (-1, -1), 0.6, BK),
+        ("LINEBEFORE", (9, 0), (-1, -1), 0.6, BK),
+        ("LINEBEFORE", (11, 0), (-1, -1), 0.6, BK),
+    ]))
+    elements.append(itbl)
     elements.append(KeepTogether([wrow, bottom, cert_sig, tc]))
 
-    # Draw thin black border 1mm from page edge on every page
-    def draw_page_border(canvas, doc):
-        canvas.saveState()
-        canvas.setStrokeColor(colors.black)
-        canvas.setLineWidth(0.5)
-        canvas.rect(1*mm, 1*mm, A4[0]-2*mm, A4[1]-2*mm, fill=0)
-        canvas.restoreState()
-
-    doc.build(elements, onFirstPage=draw_page_border, onLaterPages=draw_page_border)
+    doc.build(elements)
     return response
 
 
+# ── Public PDF: no login required, accessed via share token ──────────────
+def invoice_public_pdf(request, token):
+    invoice = get_object_or_404(SalesInvoice, share_token=token)
+    return invoice_pdf(request, invoice.pk)
+
+
+# ── WhatsApp: open wa.me link with pre-filled invoice message ─────────────
+@login_required
+def invoice_whatsapp(request, pk):
+    """Returns a wa.me URL so the browser can open WhatsApp with a pre-filled message."""
+    import secrets
+    from urllib.parse import quote
+    invoice = get_object_or_404(SalesInvoice, pk=pk)
+    cust    = invoice.customer
+
+    # Generate share token if not already set
+    if not invoice.share_token:
+        invoice.share_token = secrets.token_urlsafe(32)
+        invoice.save(update_fields=['share_token'])
+
+    # Build public PDF link
+    base_url = request.build_absolute_uri('/').rstrip('/')
+    pdf_link = f"{base_url}/sales/invoices/public/{invoice.share_token}/pdf/"
+
+    # Pick best phone: invoice-level override → customer mobile → customer phone
+    phone = (invoice.customer_mobile or cust.mobile or cust.phone or "").strip()
+    phone = "".join(c for c in phone if c.isdigit())
+    if phone and not phone.startswith("91") and len(phone) == 10:
+        phone = "91" + phone
+
+    due = invoice.due_date.strftime("%d-%m-%Y") if invoice.due_date else "—"
+    msg = (
+        f"Dear {cust.name},\n\n"
+        f"Please find your invoice details below:\n"
+        f"Invoice No : {invoice.invoice_number}\n"
+        f"Date       : {invoice.invoice_date.strftime('%d-%m-%Y') if invoice.invoice_date else ''}\n"
+        f"Amount     : Rs. {invoice.total_amount}\n"
+        f"Due Date   : {due}\n"
+        f"Balance    : Rs. {invoice.balance_due}\n\n"
+        f"View / Download Invoice PDF:\n{pdf_link}\n\n"
+        f"For any queries, contact us at: 7986810335\n"
+        f"— Chandigarh Team Computers"
+    )
+
+    if phone:
+        wa_url = f"https://wa.me/{phone}?text={quote(msg)}"
+    else:
+        wa_url = f"https://wa.me/?text={quote(msg)}"
+
+    return JsonResponse({"url": wa_url, "phone": phone})
+
+
+# ── Email: send PDF invoice as attachment via Gmail SMTP ──────────────────
+@login_required
+def invoice_send_email(request, pk):
+    """Sends the invoice PDF as an email attachment to the customer (or a custom address)."""
+    if request.method != "POST":
+        return JsonResponse({"error": "POST required"}, status=405)
+
+    import io
+    from django.core.mail import EmailMessage
+    from django.conf import settings as django_settings
+
+    invoice  = get_object_or_404(SalesInvoice, pk=pk)
+    cust     = invoice.customer
+    to_email = request.POST.get("email", "").strip() or invoice.customer_email or cust.email
+
+    if not to_email:
+        return JsonResponse({"error": "No email address provided."}, status=400)
+
+    if not django_settings.EMAIL_HOST_USER:
+        return JsonResponse({"error": "Email is not configured. Please set EMAIL_HOST_USER and EMAIL_HOST_PASSWORD in environment variables."}, status=500)
+
+    # Generate share token for public PDF link
+    import secrets
+    if not invoice.share_token:
+        invoice.share_token = secrets.token_urlsafe(32)
+        invoice.save(update_fields=['share_token'])
+    base_url = request.build_absolute_uri('/').rstrip('/')
+    pdf_link = f"{base_url}/sales/invoices/public/{invoice.share_token}/pdf/"
+
+    # Generate PDF in memory
+    pdf_response = invoice_pdf(request, pk)
+    pdf_bytes    = pdf_response.content
+
+    subject = f"Invoice {invoice.invoice_number} from Chandigarh Team Computers"
+    body    = (
+        f"Dear {cust.name},\n\n"
+        f"Please find your invoice attached to this email.\n"
+        f"You can also view/download it here: {pdf_link}\n\n"
+        f"Invoice No : {invoice.invoice_number}\n"
+        f"Date       : {invoice.invoice_date.strftime('%d-%m-%Y') if invoice.invoice_date else ''}\n"
+        f"Amount     : Rs. {invoice.total_amount}\n"
+        f"Balance Due: Rs. {invoice.balance_due}\n\n"
+        f"Thank you for your business!\n\n"
+        f"Regards,\nChandigarh Team Computers\nPhone: 7986810335"
+    )
+
+    try:
+        email = EmailMessage(
+            subject=subject,
+            body=body,
+            from_email=f"Chandigarh Team Computers <{django_settings.EMAIL_HOST_USER}>",
+            to=[to_email],
+        )
+        email.attach(
+            f"Invoice_{invoice.invoice_number}.pdf",
+            pdf_bytes,
+            "application/pdf",
+        )
+        email.send(fail_silently=False)
+        return JsonResponse({"success": True, "message": f"Invoice sent to {to_email}"})
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
 
 
 
@@ -642,6 +752,8 @@ def invoice_edit(request, pk):
                 invoice.add_less2_label= request.POST.get('add_less2_label', '')
                 invoice.add_less2      = Decimal(str(request.POST.get('add_less2', 0) or 0))
                 invoice.bill_discount_pct = Decimal(str(request.POST.get('bill_discount_pct', 0) or 0))
+                invoice.customer_mobile = request.POST.get('customer_mobile', '').strip()
+                invoice.customer_email  = request.POST.get('customer_email', '').strip()
 
                 # Re-add items (same logic as invoice_add)
                 product_ids   = request.POST.getlist('product[]')
