@@ -189,8 +189,8 @@ def invoice_delete(request, pk):
     messages.success(request, "Invoice deleted!")
     return redirect("invoice_list")
 
-@login_required
-def invoice_pdf(request, pk):
+def _generate_invoice_pdf(request, pk):
+    """Core PDF generation — no login check, called by both invoice_pdf and invoice_public_pdf."""
     from reportlab.lib.pagesizes import A4
     from reportlab.lib import colors
     from reportlab.lib.units import mm
@@ -588,10 +588,17 @@ def invoice_pdf(request, pk):
     return response
 
 
+@login_required
+def invoice_pdf(request, pk):
+    """Login-protected wrapper — used from browser by logged-in staff."""
+    return _generate_invoice_pdf(request, pk)
+
+
 # ── Public PDF: no login required, accessed via share token ──────────────
 def invoice_public_pdf(request, token):
+    """Public PDF via unique share token — no login needed for customers."""
     invoice = get_object_or_404(SalesInvoice, share_token=token)
-    return invoice_pdf(request, invoice.pk)
+    return _generate_invoice_pdf(request, invoice.pk)
 
 
 # ── WhatsApp: open wa.me link with pre-filled invoice message ─────────────
@@ -670,7 +677,7 @@ def invoice_send_email(request, pk):
     pdf_link = f"{base_url}/sales/invoices/public/{invoice.share_token}/pdf/"
 
     # Generate PDF in memory
-    pdf_response = invoice_pdf(request, pk)
+    pdf_response = _generate_invoice_pdf(request, pk)
     pdf_bytes    = pdf_response.content
 
     subject = f"Invoice {invoice.invoice_number} from Chandigarh Team Computers"
