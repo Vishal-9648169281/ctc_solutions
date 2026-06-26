@@ -208,13 +208,13 @@ def invoice_pdf(request, pk):
     response = HttpResponse(content_type="application/pdf")
     response["Content-Disposition"] = f"inline; filename=Invoice_{invoice.invoice_number}.pdf"
 
-    LM = RM = 6*mm
+    LM = RM = 2*mm
     doc = SimpleDocTemplate(
         response, pagesize=A4,
         leftMargin=LM, rightMargin=RM,
-        topMargin=5*mm, bottomMargin=5*mm
+        topMargin=1*mm, bottomMargin=2*mm
     )
-    W   = A4[0] - LM - RM          # usable width ≈ 199mm
+    W   = A4[0] - LM - RM          # usable width ≈ 202mm
     elements = []
 
     # ── Style helper ────────────────────────────────────────
@@ -294,7 +294,7 @@ def invoice_pdf(request, pk):
         [Paragraph(f"State Code : {state_code}",ps("p7",8)), Paragraph("State Code :", ps("p8",8))],
         [Paragraph(f"GSTIN Number :  {cust.gstin or ''}",ps("p9",8)), Paragraph("GSTIN Number :", ps("p10",8))],
     ], colWidths=[half, half])
-    party.setStyle(ts(box(), grid(0.2), pad(3), vmid(),
+    party.setStyle(ts(box(), grid(0.2), pad(2), vmid(),
         ("BACKGROUND",(0,0),(-1,0), LBLU),
         ("LINEAFTER",(0,0),(0,-1),0.5,BK),
         ("FONTNAME",(0,0),(-1,0),"Helvetica-Bold"),
@@ -376,12 +376,16 @@ def invoice_pdf(request, pk):
             CR(f"{igst_amt:.2f}",     f"riga{idx}"),
         ])
 
-    # Filler rows
-    for fi in range(max(0, 8 - len(items))):
-        rows.append([Paragraph(" ", ps(f"ef{fi}",8))] * 13)
+    # Filler rows — enough to push content to fill A4 page
+    ITEM_ROW_H = 6.5*mm
+    n_filler = max(0, 26 - len(items))
+    for fi in range(n_filler):
+        rows.append([Paragraph("", ps(f"ef{fi}",7))] * 13)
 
+    # Fixed row heights: headers auto-size, data rows fixed at ITEM_ROW_H
+    row_heights = [None, None] + [ITEM_ROW_H] * (len(rows) - 2)
     NR = len(rows)
-    itbl = Table(rows, colWidths=cw, repeatRows=2)
+    itbl = Table(rows, colWidths=cw, rowHeights=row_heights, repeatRows=2)
     itbl.setStyle(TableStyle([
         box(0.6), grid(0.25), pad(3), vmid(),
         ("BACKGROUND", (0,0),  (-1,1),   LBLU),
