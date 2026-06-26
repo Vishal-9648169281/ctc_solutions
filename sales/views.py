@@ -376,9 +376,9 @@ def invoice_pdf(request, pk):
             CR(f"{igst_amt:.2f}",     f"riga{idx}"),
         ])
 
-    # Filler rows — enough to push content to fill A4 page
-    ITEM_ROW_H = 6.5*mm
-    n_filler = max(0, 26 - len(items))
+    # Filler rows — keep items table compact so bottom sections fit on same page
+    ITEM_ROW_H = 6*mm
+    n_filler = max(0, 10 - len(items))
     for fi in range(n_filler):
         rows.append([Paragraph("", ps(f"ef{fi}",7))] * 13)
 
@@ -429,7 +429,6 @@ def invoice_pdf(request, pk):
         Paragraph(f"Rs. {total_igst:.2f}",                                   ps("wig",8,align=TA_RIGHT)),
     ]], colWidths=[_wleft, cw[8], cw[10], cw[12]])
     wrow.setStyle(ts(box(0.6), pad(4), vmid()))
-    elements.append(wrow)
 
     # ── 8. REMARKS / BANK  |  TOTALS  ─────────────────────
     tax_total = total_cgst * 2 if not is_inter else total_igst
@@ -498,8 +497,6 @@ def invoice_pdf(request, pk):
         ("LINEAFTER",(0,0),(0,0),0.5,BK),
         ("VALIGN",(0,0),(-1,-1),"TOP"),
     ))
-    elements.append(bottom)
-
     # ── 9. CERTIFIED + FOR CTC ────────────────────────────
     cert_sig = Table([[
         Paragraph("Certified that the Particulars given above are true and correct",
@@ -513,7 +510,6 @@ def invoice_pdf(request, pk):
         ("VALIGN",(0,0),(0,0),"MIDDLE"),
         ("VALIGN",(1,0),(1,0),"TOP"),
     ))
-    elements.append(cert_sig)
 
     # ── 10. TERMS & CONDITIONS ────────────────────────────
     tc = Table([[
@@ -525,7 +521,10 @@ def invoice_pdf(request, pk):
             ps("tc",8)),
     ]], colWidths=[W])
     tc.setStyle(ts(box(0.5), pad(5)))
-    elements.append(tc)
+
+    # Keep words row + all bottom sections together on same page as items table
+    from reportlab.platypus import KeepTogether
+    elements.append(KeepTogether([wrow, bottom, cert_sig, tc]))
 
     doc.build(elements)
     return response
