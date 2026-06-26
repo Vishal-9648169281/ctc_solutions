@@ -210,9 +210,38 @@ body.sidebar-collapsed #main{margin-left:var(--sidebar-collapsed)}
   .ctc-card{box-shadow:none!important;border:1px solid #e2e8f0}
 }
 @media(max-width:768px){
-  #sidebar{width:0;overflow:hidden}
+  /* Sidebar: hidden by default, slides in as overlay */
+  #sidebar{width:0;overflow:hidden;position:fixed;z-index:1050;transition:width .25s}
   body.sidebar-open #sidebar{width:var(--sidebar-w)}
-  #main{margin-left:0}
+  body.sidebar-open::after{content:'';position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1040}
+  #main{margin-left:0!important;padding:10px 8px!important}
+
+  /* Topbar */
+  #topbar{padding:0 10px}
+  .brand-name{font-size:.9rem}
+  .topbar-right{gap:6px}
+  .topbar-username{display:none}
+
+  /* Page header stack */
+  .page-header{flex-direction:column;align-items:flex-start;gap:8px}
+  .page-header .d-flex{flex-wrap:wrap;gap:6px}
+
+  /* Tables: horizontal scroll */
+  .ctc-card-body .table-responsive,
+  .ctc-card-body{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  table{min-width:600px}
+
+  /* Cards full width */
+  .ctc-card{border-radius:8px}
+  .row.g-3>[class*="col-md"]{flex:0 0 100%;max-width:100%}
+  .row.g-2>[class*="col-md"]{flex:0 0 100%;max-width:100%}
+
+  /* Buttons smaller */
+  .btn-ctc,.btn-ctc-outline{padding:6px 12px;font-size:.8rem}
+  .btn-sm-icon{padding:4px 8px}
+
+  /* Forms */
+  .form-control,.form-select{font-size:.85rem}
 }
 
 /* ── COMPACT FORM ── */
