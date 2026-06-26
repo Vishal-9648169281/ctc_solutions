@@ -564,9 +564,10 @@ def invoice_edit(request, pk):
             invoice.notes = request.POST.get('notes', '')
 
             # Delete old items and restore stock
-            for old_item in invoice.items.all():
-                old_item.product.current_stock += Decimal(str(old_item.quantity))
-                old_item.product.save()
+            for old_item in invoice.items.select_related('product').all():
+                if old_item.product:
+                    old_item.product.current_stock += Decimal(str(old_item.quantity))
+                    old_item.product.save()
             invoice.items.all().delete()
 
             # Re-add items
@@ -612,17 +613,32 @@ def invoice_edit(request, pk):
     # Pre-fill existing items for the form
     existing_items = []
     for item in invoice.items.select_related('product').all():
-        existing_items.append({
-            'product_id': str(item.product.pk),
-            'name': item.product.name,
-            'hsn': item.product.hsn_code or '',
-            'unit': item.product.unit.name if item.product.unit else '',
-            'qty': float(item.quantity),
-            'rate': float(item.rate),
-            'tax_rate': float(item.tax_rate),
-            'tax_amt': float(item.tax_amount),
-            'amount': float(item.amount),
-        })
+        if item.product:
+            existing_items.append({
+                'product_id': str(item.product.pk),
+                'name': item.description or item.product.name,
+                'hsn': item.hsn_no or item.product.hsn_code or '',
+                'unit': item.unit or (str(item.product.unit) if item.product.unit else ''),
+                'qty': float(item.quantity),
+                'rate': float(item.rate),
+                'tax_rate': float(item.tax_rate),
+                'dis_pct': float(item.discount_pct or 0),
+                'amount': float(item.amount),
+                'description': item.description or '',
+            })
+        else:
+            existing_items.append({
+                'product_id': '',
+                'name': '',
+                'hsn': item.hsn_no or '',
+                'unit': item.unit or '',
+                'qty': float(item.quantity),
+                'rate': float(item.rate),
+                'tax_rate': float(item.tax_rate),
+                'dis_pct': float(item.discount_pct or 0),
+                'amount': float(item.amount),
+                'description': item.description or '',
+            })
 
     import json
     context = {

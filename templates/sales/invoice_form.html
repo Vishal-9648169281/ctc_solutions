@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}New GST Invoice{% endblock %}
+{% block title %}{% if edit_mode %}Edit Invoice{% else %}New GST Invoice{% endif %}{% endblock %}
 {% block extra_css %}
 <style>
 .items-table th{background:#1e3a8a;color:#fff;font-size:.72rem;padding:8px 6px;white-space:nowrap}
@@ -20,11 +20,12 @@
 <div class="page-header">
   <div>
     <h5><i class="fa fa-file-invoice me-2"></i>
-      {% if invoice_type == 'gst' %}New GST Invoice
+      {% if edit_mode %}Edit Invoice {{ invoice.invoice_number }}
+      {% elif invoice_type == 'gst' %}New GST Invoice
       {% elif invoice_type == 'proforma' %}New Proforma Invoice
       {% else %}New Export Invoice{% endif %}
     </h5>
-    <div class="page-breadcrumb">Sales &rsaquo; <span>New Invoice</span></div>
+    <div class="page-breadcrumb">Sales &rsaquo; <span>{% if edit_mode %}Edit Invoice{% else %}New Invoice{% endif %}</span></div>
   </div>
   <a href="/sales/invoices/" class="btn-ctc-outline"><i class="fa fa-arrow-left me-1"></i>Back</a>
 </div>
@@ -53,7 +54,7 @@
           <select name="customer" id="customerSelect" class="form-select form-select-sm" required onchange="onCustomerChange(this)">
             <option value="">-- Select Customer --</option>
             {% for c in customers %}
-            <option value="{{ c.pk }}" data-mobile="{{ c.mobile|default:'' }}" data-gst-type="{{ c.gst_type|default:'W' }}">{{ c.name }}</option>
+            <option value="{{ c.pk }}" data-mobile="{{ c.mobile|default:'' }}" data-gst-type="{{ c.gst_type|default:'W' }}"{% if edit_mode and invoice.customer_id == c.pk %} selected{% endif %}>{{ c.name }}</option>
             {% endfor %}
           </select>
         </div>
@@ -65,24 +66,24 @@
           <label class="form-label-sm">GST Type</label>
           <div class="d-flex gap-3 pt-1">
             <div class="form-check form-check-inline mb-0">
-              <input class="form-check-input" type="radio" name="gst_type" id="gst_within" value="W" checked onchange="onGstTypeChange()">
+              <input class="form-check-input" type="radio" name="gst_type" id="gst_within" value="W" {% if not edit_mode or invoice.gst_type != 'I' %}checked{% endif %} onchange="onGstTypeChange()">
               <label class="form-check-label small" for="gst_within">Within</label>
             </div>
             <div class="form-check form-check-inline mb-0">
-              <input class="form-check-input" type="radio" name="gst_type" id="gst_inter" value="I" onchange="onGstTypeChange()">
+              <input class="form-check-input" type="radio" name="gst_type" id="gst_inter" value="I" {% if edit_mode and invoice.gst_type == 'I' %}checked{% endif %} onchange="onGstTypeChange()">
               <label class="form-check-label small" for="gst_inter">Inter</label>
             </div>
           </div>
         </div>
         <div class="col-md-2">
           <label class="form-label-sm">Due Date</label>
-          <input type="date" name="due_date" class="form-control form-control-sm">
+          <input type="date" name="due_date" class="form-control form-control-sm" value="{{ due_date }}">
         </div>
         <div class="col-md-2">
           <label class="form-label-sm">Reverse Charge?</label>
           <select name="reverse_charge" class="form-select form-select-sm">
-            <option value="N">No</option>
-            <option value="Y">Yes</option>
+            <option value="N" {% if not edit_mode or invoice.reverse_charge != 'Y' %}selected{% endif %}>No</option>
+            <option value="Y" {% if edit_mode and invoice.reverse_charge == 'Y' %}selected{% endif %}>Yes</option>
           </select>
         </div>
       </div>
@@ -96,43 +97,43 @@
       <div class="row g-3">
         <div class="col-md-3">
           <label class="form-label-sm">G.R. No.</label>
-          <input type="text" name="gr_number" class="form-control form-control-sm" placeholder="G.R. Number">
+          <input type="text" name="gr_number" class="form-control form-control-sm" placeholder="G.R. Number" value="{{ invoice.gr_number|default:'' }}">
         </div>
         <div class="col-md-3">
           <label class="form-label-sm">G.R. Date</label>
-          <input type="date" name="gr_date" class="form-control form-control-sm">
+          <input type="date" name="gr_date" class="form-control form-control-sm" value="{% if edit_mode and invoice.gr_date %}{{ invoice.gr_date|date:'Y-m-d' }}{% endif %}">
         </div>
         <div class="col-md-3">
           <label class="form-label-sm">Date of Supply</label>
-          <input type="date" name="date_of_supply" class="form-control form-control-sm">
+          <input type="date" name="date_of_supply" class="form-control form-control-sm" value="{% if edit_mode and invoice.date_of_supply %}{{ invoice.date_of_supply|date:'Y-m-d' }}{% endif %}">
         </div>
         <div class="col-md-3">
           <label class="form-label-sm">Time of Supply</label>
-          <input type="time" name="time_of_supply" class="form-control form-control-sm">
+          <input type="time" name="time_of_supply" class="form-control form-control-sm" value="{{ invoice.time_of_supply|default:'' }}">
         </div>
         <div class="col-md-3">
           <label class="form-label-sm">Place of Supply</label>
-          <input type="text" name="place_of_supply" class="form-control form-control-sm" placeholder="e.g. Chandigarh">
+          <input type="text" name="place_of_supply" class="form-control form-control-sm" placeholder="e.g. Chandigarh" value="{{ invoice.place_of_supply|default:'' }}">
         </div>
         <div class="col-md-3">
           <label class="form-label-sm">Order No.</label>
-          <input type="text" name="order_number" class="form-control form-control-sm">
+          <input type="text" name="order_number" class="form-control form-control-sm" value="{{ invoice.order_number|default:'' }}">
         </div>
         <div class="col-md-3">
           <label class="form-label-sm">Order Date</label>
-          <input type="date" name="order_date" class="form-control form-control-sm">
+          <input type="date" name="order_date" class="form-control form-control-sm" value="{% if edit_mode and invoice.order_date %}{{ invoice.order_date|date:'Y-m-d' }}{% endif %}">
         </div>
         <div class="col-md-3">
           <label class="form-label-sm">Vehicle No.</label>
-          <input type="text" name="vehicle_number" class="form-control form-control-sm">
+          <input type="text" name="vehicle_number" class="form-control form-control-sm" value="{{ invoice.vehicle_number|default:'' }}">
         </div>
         <div class="col-md-4">
           <label class="form-label-sm">Transport</label>
-          <input type="text" name="transport" class="form-control form-control-sm">
+          <input type="text" name="transport" class="form-control form-control-sm" value="{{ invoice.transport|default:'' }}">
         </div>
         <div class="col-md-4">
           <label class="form-label-sm">Despatched To</label>
-          <input type="text" name="despatched_to" class="form-control form-control-sm">
+          <input type="text" name="despatched_to" class="form-control form-control-sm" value="{{ invoice.despatched_to|default:'' }}">
         </div>
       </div>
     </div>
@@ -198,27 +199,27 @@
       <div class="row g-4">
         <div class="col-md-5">
           <label class="form-label-sm">Remarks</label>
-          <textarea name="notes" class="form-control form-control-sm" rows="3" placeholder="Any additional remarks..."></textarea>
+          <textarea name="notes" class="form-control form-control-sm" rows="3" placeholder="Any additional remarks...">{{ invoice.notes|default:'' }}</textarea>
         </div>
         <div class="col-md-7">
           <table class="table totals-box mb-0" style="border-radius:10px;overflow:hidden;border:1px solid #e2e8f0">
             <tr style="background:#f8fafc"><td>Total Amount</td><td class="text-end fw-600" id="subtotal">0.00</td></tr>
             <tr style="background:#f8fafc"><td>GST Amount</td><td class="text-end fw-600 text-success" id="taxTotal">0.00</td></tr>
             <tr style="background:#f8fafc">
-              <td>Add/Less 1 &nbsp;<input type="text" name="add_less1_label" id="add_less1_label" class="form-control form-control-sm d-inline" placeholder="A=Add  L=Less" style="width:110px" oninput="applyAddLessSign(1)"></td>
-              <td class="text-end"><input type="number" name="add_less1" id="add_less1" class="form-control form-control-sm d-inline" value="0" step="0.01" style="width:110px" onchange="calcTotal()"></td>
+              <td>Add/Less 1 &nbsp;<input type="text" name="add_less1_label" id="add_less1_label" class="form-control form-control-sm d-inline" placeholder="A=Add  L=Less" style="width:110px" value="{{ invoice.add_less1_label|default:'' }}" oninput="applyAddLessSign(1)"></td>
+              <td class="text-end"><input type="number" name="add_less1" id="add_less1" class="form-control form-control-sm d-inline" value="{{ invoice.add_less1|default:0 }}" step="0.01" style="width:110px" onchange="calcTotal()"></td>
             </tr>
             <tr style="background:#f8fafc">
-              <td>Add/Less 2 &nbsp;<input type="text" name="add_less2_label" id="add_less2_label" class="form-control form-control-sm d-inline" placeholder="A=Add  L=Less" style="width:110px" oninput="applyAddLessSign(2)"></td>
-              <td class="text-end"><input type="number" name="add_less2" id="add_less2" class="form-control form-control-sm d-inline" value="0" step="0.01" style="width:110px" onchange="calcTotal()"></td>
+              <td>Add/Less 2 &nbsp;<input type="text" name="add_less2_label" id="add_less2_label" class="form-control form-control-sm d-inline" placeholder="A=Add  L=Less" style="width:110px" value="{{ invoice.add_less2_label|default:'' }}" oninput="applyAddLessSign(2)"></td>
+              <td class="text-end"><input type="number" name="add_less2" id="add_less2" class="form-control form-control-sm d-inline" value="{{ invoice.add_less2|default:0 }}" step="0.01" style="width:110px" onchange="calcTotal()"></td>
             </tr>
             <tr style="background:#f8fafc">
               <td>Discount</td>
-              <td class="text-end"><input type="number" name="discount" id="discount" class="form-control form-control-sm d-inline" value="0" style="width:110px" onchange="calcTotal()"></td>
+              <td class="text-end"><input type="number" name="discount" id="discount" class="form-control form-control-sm d-inline" value="{{ invoice.discount|default:0 }}" style="width:110px" onchange="calcTotal()"></td>
             </tr>
             <tr style="background:#f8fafc">
               <td>Bill Discount % &nbsp;<span class="text-muted small" id="billDiscAmtDisplay"></span></td>
-              <td class="text-end"><input type="number" name="bill_discount_pct" id="bill_discount_pct" class="form-control form-control-sm d-inline" value="0" step="0.01" min="0" max="100" style="width:110px" onchange="calcTotal()"></td>
+              <td class="text-end"><input type="number" name="bill_discount_pct" id="bill_discount_pct" class="form-control form-control-sm d-inline" value="{{ invoice.bill_discount_pct|default:0 }}" step="0.01" min="0" max="100" style="width:110px" onchange="calcTotal()"></td>
             </tr>
             <tr class="grand"><td><strong>NET AMOUNT</strong></td><td class="text-end fs-5"><strong id="grandTotal">0.00</strong></td></tr>
             <tr style="background:#eff6ff"><td style="color:#1e40af">Net Rounded</td><td class="text-end fw-700" style="color:#1e40af" id="netRounded">0</td></tr>
@@ -417,5 +418,53 @@ function saveQuickCustomer() {
 }
 // Enter key in modal
 document.getElementById('quickCustomerModal').addEventListener('keydown', e => { if(e.key==='Enter') saveQuickCustomer(); });
+
+// ── Edit mode: pre-fill items and trigger mobile/totals ──────
+{% if edit_mode %}
+(function(){
+  const existing = {{ existing_items_json|safe }};
+  if (existing && existing.length > 0) {
+    document.getElementById('itemsBody').innerHTML = '';
+    existing.forEach(item => {
+      const tbody = document.getElementById('itemsBody');
+      tbody.insertAdjacentHTML('beforeend', `<tr>
+        <td>
+          <div class="item-desc-box">
+            <select name="product[]" class="form-select form-select-sm" onchange="fillRate(this)" style="min-width:130px">${productOptions}</select>
+            <input type="text" name="description[]" class="form-control form-control-sm manual-desc" placeholder="or type here..." title="Manual description">
+          </div>
+        </td>
+        <td><input type="text" name="hsn_no[]" class="form-control form-control-sm hsn" style="width:80px" placeholder="HSN"></td>
+        <td><input type="number" name="tax_rate[]" class="form-control form-control-sm tax" value="18" onchange="calcRow(this)" style="width:55px"></td>
+        <td><input type="number" name="quantity[]" class="form-control form-control-sm qty" value="1" min="0.01" step="0.01" onchange="calcRow(this)" required style="width:58px"></td>
+        <td><input type="text" name="unit[]" class="form-control form-control-sm unit-fld" style="width:52px" placeholder="Pcs"></td>
+        <td><input type="number" name="rate[]" class="form-control form-control-sm rate" value="0" step="0.01" onchange="calcRow(this)" required style="width:78px"></td>
+        <td><input type="number" name="discount_pct[]" class="form-control form-control-sm dis-pct" value="0" step="0.01" min="0" max="100" onchange="calcRow(this)" style="width:55px"></td>
+        <td><input type="number" name="amount[]" class="form-control form-control-sm amount" value="0" readonly style="width:78px;background:#f8fafc;font-weight:600"></td>
+        <td><button type="button" class="btn-sm-icon btn-delete" onclick="removeRow(this)"><i class="fa fa-trash"></i></button></td>
+      </tr>`);
+      const row = tbody.lastElementChild;
+      // Set product select
+      const sel = row.querySelector('select[name="product[]"]');
+      if (item.product_id) {
+        sel.value = item.product_id;
+      }
+      // Set manual description
+      row.querySelector('.manual-desc').value = item.description || '';
+      row.querySelector('.hsn').value      = item.hsn || '';
+      row.querySelector('.tax').value      = item.tax_rate || 18;
+      row.querySelector('.qty').value      = item.qty || 1;
+      row.querySelector('.unit-fld').value = item.unit || '';
+      row.querySelector('.rate').value     = item.rate || 0;
+      row.querySelector('.dis-pct').value  = item.dis_pct || 0;
+      row.querySelector('.amount').value   = item.amount || 0;
+    });
+    calcTotal();
+  }
+  // Trigger mobile auto-fill for pre-selected customer
+  const custSel = document.getElementById('customerSelect');
+  if (custSel && custSel.value) onCustomerChange(custSel);
+})();
+{% endif %}
 </script>
 {% endblock %}
