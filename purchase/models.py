@@ -1,4 +1,4 @@
-﻿from django.db import models
+from django.db import models
 from masters.models import Vendor, Product
 
 class PurchaseBill(models.Model):

@@ -1,4 +1,4 @@
-﻿from django.db import models
+from django.db import models
 from masters.models import Customer, Vendor
 from sales.models import SalesInvoice
 from purchase.models import PurchaseBill

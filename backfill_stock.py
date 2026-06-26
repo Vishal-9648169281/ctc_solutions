@@ -1,4 +1,4 @@
-﻿from masters.models import Product
+from masters.models import Product
 updated = 0
 for p in Product.objects.all():
     if p.current_stock == 0:

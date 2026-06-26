@@ -1,4 +1,4 @@
-﻿from django.shortcuts import redirect
+from django.shortcuts import redirect
 from django.contrib import messages
 
 class RoleMiddleware:

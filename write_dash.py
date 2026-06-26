@@ -1,4 +1,4 @@
-﻿content = """{% extends "base.html" %}
+content = """{% extends "base.html" %}
 {% load static %}
 {% block title %}Dashboard - CTC Solution{% endblock %}
 {% block extra_css %}

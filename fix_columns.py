@@ -1,4 +1,4 @@
-﻿from django.db import connection
+from django.db import connection
 
 cols = [
     ("masters_companymaster", "city", "VARCHAR(100) DEFAULT '' NOT NULL"),

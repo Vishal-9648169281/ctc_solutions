@@ -1,4 +1,4 @@
-﻿from masters.models import Customer, Vendor, Party
+from masters.models import Customer, Vendor, Party
 from masters.views import generate_alpha_code
 
 count_c = 0
