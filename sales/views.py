@@ -364,7 +364,7 @@ def invoice_pdf(request, pk):
             CC(str(idx),              f"rno{idx}"),
             Paragraph(iname,          ps(f"rd{idx}",8)),
             CC(hsn,                   f"rh{idx}"),
-            CC(str(item.quantity),    f"rq{idx}"),
+            CC(str(int(item.quantity)) if float(item.quantity) == int(float(item.quantity)) else str(item.quantity), f"rq{idx}"),
             CC(uname,                 f"ru{idx}"),
             CR(f"{float(item.rate):.2f}", f"rr{idx}"),
             CR(f"{taxable:.2f}",      f"rt{idx}"),
@@ -434,15 +434,24 @@ def invoice_pdf(request, pk):
     tax_total = total_cgst * 2 if not is_inter else total_igst
     due_str   = invoice.due_date.strftime("%d-%m-%Y") if invoice.due_date else ""
 
-    left_txt = (
-        "<b>REMARKS:</b><br/>"
-        f"{invoice.notes or ''}<br/><br/>"
-        f"DUE DATE : {due_str}<br/><br/>"
-        "<b>BANK NAME &nbsp;: ICICI BANK</b><br/>"
-        "A/c No &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: 632205005712<br/>"
-        "BRANCH &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: SECTOR 35C<br/>"
-        "IFSC CODE &nbsp;: ICIC0006322"
-    )
+    bank_tbl = Table([
+        [Paragraph("<b>BANK NAME</b>", ps("bk1",8,bold=True)), Paragraph(":", ps("bkc",8)), Paragraph("<b>ICICI BANK</b>", ps("bk1v",8,bold=True))],
+        [Paragraph("A/c No",           ps("bk2",8)),           Paragraph(":", ps("bkc2",8)), Paragraph("632205005712",      ps("bk2v",8))],
+        [Paragraph("BRANCH",           ps("bk3",8)),           Paragraph(":", ps("bkc3",8)), Paragraph("SECTOR 35C",        ps("bk3v",8))],
+        [Paragraph("IFSC CODE",        ps("bk4",8)),           Paragraph(":", ps("bkc4",8)), Paragraph("ICIC0006322",       ps("bk4v",8))],
+    ], colWidths=[22*mm, 4*mm, None])
+    bank_tbl.setStyle(TableStyle([("TOPPADDING",(0,0),(-1,-1),1),("BOTTOMPADDING",(0,0),(-1,-1),1),
+                                   ("LEFTPADDING",(0,0),(-1,-1),0),("RIGHTPADDING",(0,0),(-1,-1),2),
+                                   ("VALIGN",(0,0),(-1,-1),"MIDDLE")]))
+
+    left_cell = [
+        Paragraph("<b>REMARKS:</b>", ps("rem",8,bold=True)),
+        Paragraph(invoice.notes or "", ps("remn",8)),
+        Spacer(1,3*mm),
+        Paragraph(f"DUE DATE : {due_str}", ps("dd",8)),
+        Spacer(1,3*mm),
+        bank_tbl,
+    ]
 
     right_rows = [
         [Paragraph("Total Amount Before Tax", ps("ta1",8)),
@@ -489,8 +498,9 @@ def invoice_pdf(request, pk):
 
     RW = 88*mm   # right column width
     LW = W - RW
+    from reportlab.platypus import ListFlowable
     bottom = Table([[
-        Paragraph(left_txt, ps("lft",8)),
+        left_cell,
         right_tbl,
     ]], colWidths=[LW, RW])
     bottom.setStyle(ts(box(0.5), pad(4), vmid(),
