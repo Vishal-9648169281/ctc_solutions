@@ -556,58 +556,95 @@ def invoice_edit(request, pk):
 
     if request.method == 'POST':
         try:
-            import json
-            from decimal import Decimal
-            invoice.customer_id = request.POST.get('customer')
-            invoice.invoice_date = request.POST.get('invoice_date')
-            invoice.due_date = request.POST.get('due_date') or None
-            invoice.notes = request.POST.get('notes', '')
+            with transaction.atomic():
+                def _date(key):
+                    v = request.POST.get(key, '').strip()
+                    return v if v else None
 
-            # Delete old items and restore stock
-            for old_item in invoice.items.select_related('product').all():
-                if old_item.product:
-                    old_item.product.current_stock += Decimal(str(old_item.quantity))
-                    old_item.product.save()
-            invoice.items.all().delete()
+                # Restore stock for old items then delete them
+                for old_item in invoice.items.select_related('product').all():
+                    if old_item.product:
+                        old_item.product.current_stock += Decimal(str(old_item.quantity))
+                        old_item.product.save()
+                invoice.items.all().delete()
 
-            # Re-add items
-            items_json = request.POST.get('items_json', '[]')
-            items = json.loads(items_json)
-            subtotal = Decimal('0')
-            tax_total = Decimal('0')
-            for item in items:
-                if item.get('product_id'):
-                    qty = Decimal(str(item['qty']))
-                    rate = Decimal(str(item['rate']))
-                    tax_rate = Decimal(str(item.get('tax_rate', 0)))
-                    amount = qty * rate
-                    tax_amt = amount * tax_rate / 100
-                    from sales.models import SalesInvoiceItem
+                # Update invoice header fields
+                invoice.customer_id    = request.POST.get('customer')
+                invoice.invoice_date   = request.POST.get('invoice_date')
+                invoice.due_date       = _date('due_date')
+                invoice.notes          = request.POST.get('notes', '')
+                invoice.reverse_charge = request.POST.get('reverse_charge', 'N')
+                invoice.gst_type       = request.POST.get('gst_type', 'W')
+                invoice.gr_number      = request.POST.get('gr_number', '')
+                invoice.gr_date        = _date('gr_date')
+                invoice.date_of_supply = _date('date_of_supply')
+                invoice.time_of_supply = request.POST.get('time_of_supply', '') or None
+                invoice.place_of_supply= request.POST.get('place_of_supply', '')
+                invoice.order_number   = request.POST.get('order_number', '')
+                invoice.order_date     = _date('order_date')
+                invoice.vehicle_number = request.POST.get('vehicle_number', '')
+                invoice.transport      = request.POST.get('transport', '')
+                invoice.despatched_to  = request.POST.get('despatched_to', '')
+                invoice.add_less1_label= request.POST.get('add_less1_label', '')
+                invoice.add_less1      = Decimal(str(request.POST.get('add_less1', 0) or 0))
+                invoice.add_less2_label= request.POST.get('add_less2_label', '')
+                invoice.add_less2      = Decimal(str(request.POST.get('add_less2', 0) or 0))
+                invoice.bill_discount_pct = Decimal(str(request.POST.get('bill_discount_pct', 0) or 0))
+
+                # Re-add items (same logic as invoice_add)
+                product_ids   = request.POST.getlist('product[]')
+                descriptions  = request.POST.getlist('description[]')
+                quantities    = request.POST.getlist('quantity[]')
+                rates         = request.POST.getlist('rate[]')
+                tax_rates     = request.POST.getlist('tax_rate[]')
+                hsn_nos       = request.POST.getlist('hsn_no[]')
+                units         = request.POST.getlist('unit[]')
+                discount_pcts = request.POST.getlist('discount_pct[]')
+                subtotal = 0; tax_total = 0
+                for i in range(len(quantities)):
+                    pid  = product_ids[i] if i < len(product_ids) else ''
+                    desc = descriptions[i].strip() if i < len(descriptions) else ''
+                    if not pid and not desc:
+                        continue
+                    qty     = float(quantities[i] or 0)
+                    rate    = float(rates[i] or 0)
+                    tax     = float(tax_rates[i] or 0)
+                    dis_pct = float(discount_pcts[i] if i < len(discount_pcts) else 0 or 0)
+                    dis_amt = rate * qty * dis_pct / 100
+                    amount  = qty * rate - dis_amt
+                    tax_amt = amount * tax / 100
                     SalesInvoiceItem.objects.create(
                         invoice=invoice,
-                        product_id=item['product_id'],
-                        quantity=qty,
-                        rate=rate,
-                        tax_rate=tax_rate,
-                        tax_amount=tax_amt,
-                        amount=amount
+                        product_id=pid if pid else None,
+                        description=desc,
+                        hsn_no=hsn_nos[i] if i < len(hsn_nos) else '',
+                        unit=units[i] if i < len(units) else '',
+                        quantity=qty, rate=rate,
+                        discount_pct=Decimal(str(dis_pct)),
+                        discount_amt=Decimal(str(round(dis_amt, 2))),
+                        tax_rate=tax, tax_amount=tax_amt, amount=amount
                     )
-                    product = Product.objects.get(pk=item['product_id'])
-                    product.current_stock -= qty
-                    product.save()
-                    subtotal += amount
-                    tax_total += tax_amt
+                    if pid:
+                        product = Product.objects.get(pk=pid)
+                        product.current_stock -= Decimal(str(qty))
+                        product.save()
+                    subtotal += amount; tax_total += tax_amt
 
-            discount = Decimal(str(request.POST.get('discount', 0)))
-            invoice.subtotal = subtotal
-            invoice.tax_amount = tax_total
-            invoice.discount = discount
-            invoice.total_amount = subtotal + tax_total - discount
-            invoice.save()
-            messages.success(request, f'Invoice {invoice.invoice_number} updated!')
-            return redirect(f'/sales/invoices/{invoice.pk}/')
+                discount = float(request.POST.get('discount', 0) or 0)
+                bill_discount_pct = float(request.POST.get('bill_discount_pct', 0) or 0)
+                bill_discount_amt = (subtotal + tax_total) * bill_discount_pct / 100
+                al1 = float(request.POST.get('add_less1', 0) or 0)
+                al2 = float(request.POST.get('add_less2', 0) or 0)
+                net = subtotal + tax_total + al1 + al2 - discount - bill_discount_amt
+                invoice.subtotal      = subtotal
+                invoice.tax_amount    = tax_total
+                invoice.discount      = discount
+                invoice.total_amount  = net
+                invoice.net_rounded   = round(net)
+                invoice.save()
+                messages.success(request, f'Invoice {invoice.invoice_number} updated!')
+                return redirect(f'/sales/invoices/{invoice.pk}/')
         except Exception as e:
-            import traceback
             messages.error(request, f'Error: {traceback.format_exc()}')
 
     # Pre-fill existing items for the form
