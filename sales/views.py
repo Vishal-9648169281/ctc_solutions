@@ -283,6 +283,7 @@ def invoice_pdf(request, pk):
     # ── 4. PARTY: BILLED TO  |  SHIPPED TO ───────────────
     cust = invoice.customer
     half = W / 2
+    state_code = (cust.gstin[:2] if cust.gstin and len(cust.gstin) >= 2 else "") + (" -" + cust.state if cust.state else "")
     party = Table([
         [Paragraph("<b>Details of Receiver (Billed to)</b>",   ps("pb1",8,bold=True)),
          Paragraph("<b>Details of Consignee (Shipped to)</b>", ps("pb2",8,bold=True))],
@@ -290,9 +291,8 @@ def invoice_pdf(request, pk):
         [Paragraph(f"Address : {cust.address or ''}", ps("p3",8)), Paragraph("Address :", ps("p4",8))],
         [Paragraph("",ps("p5b",8)), Paragraph("",ps("p6b",8))],
         [Paragraph(f"State : {cust.state or ''}",ps("p5",8)),  Paragraph("State :",  ps("p6",8))],
-        [Paragraph(f"State Code : {cust.state or ''}",ps("p7",8)), Paragraph("State Code :", ps("p8",8))],
-        [Paragraph(f"GSTIN Number : {cust.gstin or ''}",ps("p9",8)), Paragraph("GSTIN Number :", ps("p10",8))],
-        [Paragraph(f"Phone No. : {cust.phone or ''}",ps("p11",8)), Paragraph("Phone No. :", ps("p12",8))],
+        [Paragraph(f"State Code : {state_code}",ps("p7",8)), Paragraph("State Code :", ps("p8",8))],
+        [Paragraph(f"GSTIN Number :  {cust.gstin or ''}",ps("p9",8)), Paragraph("GSTIN Number :", ps("p10",8))],
     ], colWidths=[half, half])
     party.setStyle(ts(box(), grid(0.2), pad(3), vmid(),
         ("BACKGROUND",(0,0),(-1,0), LBLU),
@@ -333,9 +333,9 @@ def invoice_pdf(request, pk):
             H("UTGST","hug"),  Paragraph("",ps("hug2",7)),
             H("IGST","hig"),   Paragraph("",ps("hig2",7))]
     hdr1 = [Paragraph("",ps(f"hx{i}",7)) for i in range(7)] + [
-            H("%","hcgr"), H("Amount","hcga"),
-            H("%","hugr"), H("Amount","huga"),
-            H("%","higr"), H("Amount","higa")]
+            H("Rate\n%","hcgr"), H("Amount","hcga"),
+            H("Rate\n%","hugr"), H("Amount","huga"),
+            H("Rate\n%","higr"), H("Amount","higa")]
     rows = [hdr0, hdr1]
 
     is_inter     = (invoice.gst_type == 'I')
@@ -368,11 +368,11 @@ def invoice_pdf(request, pk):
             CC(uname,                 f"ru{idx}"),
             CR(f"{float(item.rate):.2f}", f"rr{idx}"),
             CR(f"{taxable:.2f}",      f"rt{idx}"),
-            CC(f"{half_rate:.0f}" if not is_inter else "0.00", f"rcgr{idx}"),
+            CC(f"{half_rate:.2f}" if not is_inter else "0.00", f"rcgr{idx}"),
             CR(f"{cgst_amt:.2f}",     f"rcga{idx}"),
-            CC(f"{half_rate:.0f}" if not is_inter else "0.00", f"rugr{idx}"),
+            CC(f"{half_rate:.2f}" if not is_inter else "0.00", f"rugr{idx}"),
             CR(f"{cgst_amt:.2f}" if not is_inter else "0.00",  f"ruga{idx}"),
-            CC(f"{full_rate:.0f}" if is_inter else "0.00",     f"rigr{idx}"),
+            CC(f"{full_rate:.2f}" if is_inter else "0.00",     f"rigr{idx}"),
             CR(f"{igst_amt:.2f}",     f"riga{idx}"),
         ])
 
@@ -416,14 +416,14 @@ def invoice_pdf(request, pk):
     except:
         words = f"{sym}{invoice.total_amount:.2f} only"
 
-    # Words row spans 7 left cols; then CGST-amt | UTGST-amt | IGST-amt in right cols
+    # Words row — left spans all cols except the 3 GST Amount cols
+    _wleft = W - cw[8] - cw[10] - cw[12]
     wrow = Table([[
         Paragraph(f"Invoice Value (In Words) &nbsp; <b>{words}</b>", ps("ww",8)),
-        Paragraph(f"Rs. {total_cgst:.2f}",  ps("wcg",8,align=TA_RIGHT)),
-        Paragraph(f"Rs. {total_cgst:.2f}" if not is_inter else "Rs. 0.00",
-                                                ps("wug",8,align=TA_RIGHT)),
-        Paragraph(f"Rs. {total_igst:.2f}",  ps("wig",8,align=TA_RIGHT)),
-    ]], colWidths=[W - 3*24*mm, 24*mm, 24*mm, 24*mm])
+        Paragraph(f"Rs. {total_cgst:.2f}",                                   ps("wcg",8,align=TA_RIGHT)),
+        Paragraph(f"Rs. {total_cgst:.2f}" if not is_inter else "Rs. 0.00",  ps("wug",8,align=TA_RIGHT)),
+        Paragraph(f"Rs. {total_igst:.2f}",                                   ps("wig",8,align=TA_RIGHT)),
+    ]], colWidths=[_wleft, cw[8], cw[10], cw[12]])
     wrow.setStyle(ts(box(0.6), pad(4), vmid()))
     elements.append(wrow)
 
