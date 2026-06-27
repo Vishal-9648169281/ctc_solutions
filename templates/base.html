@@ -213,35 +213,60 @@ body.sidebar-collapsed #main{margin-left:var(--sidebar-collapsed)}
   /* Sidebar: hidden by default, slides in as overlay */
   #sidebar{width:0;overflow:hidden;position:fixed;z-index:1050;transition:width .25s}
   body.sidebar-open #sidebar{width:var(--sidebar-w)}
-  body.sidebar-open::after{content:'';position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1040}
-  #main{margin-left:0!important;padding:10px 8px!important}
+  body.sidebar-open::after{content:'';position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1040;pointer-events:all}
+  #main{margin-left:0!important;padding:10px 8px 80px 8px!important}
 
   /* Topbar */
-  #topbar{padding:0 10px}
-  .brand-name{font-size:.9rem}
-  .topbar-right{gap:6px}
-  .topbar-username{display:none}
+  #topbar{padding:0 8px;gap:8px}
+  .brand-text .sub{display:none}
+  .brand-text .name{font-size:.85rem}
+  #topbar-datetime{display:none}
+  .user-name{display:none}
+  .user-role-chip{display:none}
 
   /* Page header stack */
-  .page-header{flex-direction:column;align-items:flex-start;gap:8px}
+  .page-header{flex-direction:column;align-items:flex-start;gap:8px;padding:10px 14px}
+  .page-header h5{font-size:.92rem}
   .page-header .d-flex{flex-wrap:wrap;gap:6px}
 
   /* Tables: horizontal scroll */
-  .ctc-card-body .table-responsive,
   .ctc-card-body{overflow-x:auto;-webkit-overflow-scrolling:touch}
-  table{min-width:600px}
+  table.table{min-width:480px;font-size:.78rem}
+  th,td{padding:7px 10px!important;white-space:nowrap}
 
   /* Cards full width */
   .ctc-card{border-radius:8px}
   .row.g-3>[class*="col-md"]{flex:0 0 100%;max-width:100%}
   .row.g-2>[class*="col-md"]{flex:0 0 100%;max-width:100%}
+  .row.g-4>[class*="col-md"]{flex:0 0 100%;max-width:100%}
 
   /* Buttons smaller */
   .btn-ctc,.btn-ctc-outline{padding:6px 12px;font-size:.8rem}
-  .btn-sm-icon{padding:4px 8px}
+  .btn-sm-icon{width:28px;height:28px;font-size:.75rem}
 
   /* Forms */
   .form-control,.form-select{font-size:.85rem}
+
+  /* Stat cards: 2-col grid */
+  .row>[class*="col-md-3"]{flex:0 0 50%;max-width:50%}
+
+  /* FABs — move to bottom-left (back) and bottom-right (mic), clear of content */
+  #exitBtn{bottom:14px;right:14px;width:42px;height:42px;font-size:.95rem}
+  #voiceBtn{bottom:66px;right:14px;width:44px;height:44px;font-size:1rem}
+
+  /* Voice panel → full-width bottom sheet on mobile */
+  #voicePanel{
+    left:0!important;right:0!important;bottom:0!important;
+    width:100%!important;border-radius:20px 20px 0 0!important;
+    max-height:88vh;overflow-y:auto;
+    box-shadow:0 -8px 40px rgba(0,0,0,.22)!important;
+  }
+
+  /* Compact form labels stack on mobile */
+  .compact-form .form-row{flex-direction:column;align-items:flex-start;gap:3px}
+  .compact-form .form-row label{flex:none;min-width:unset}
+  .compact-form .form-row .form-control,
+  .compact-form .form-row .form-select{width:100%}
 }
 
 /* ── COMPACT FORM ── */
@@ -509,7 +534,11 @@ body.sidebar-collapsed #main{margin-left:var(--sidebar-collapsed)}
 </button>
 
 <!-- Voice Assistant Panel -->
-<div id="voicePanel" style="display:none;position:fixed;bottom:145px;right:16px;z-index:1050;width:330px;background:#fff;border-radius:20px;box-shadow:0 12px 50px rgba(0,0,0,.2);overflow:hidden;font-family:'Inter',sans-serif;">
+<div id="voicePanel" style="display:none;position:fixed;bottom:120px;right:16px;z-index:1050;width:330px;background:#fff;border-radius:20px;box-shadow:0 12px 50px rgba(0,0,0,.2);overflow:hidden;font-family:'Inter',sans-serif;">
+  <!-- Mobile drag handle -->
+  <div class="va-drag-handle" style="display:none;justify-content:center;padding:8px 0 2px;background:#fff;cursor:grab;">
+    <div style="width:36px;height:4px;background:#d1d5db;border-radius:4px;"></div>
+  </div>
   <!-- Header -->
   <div style="background:linear-gradient(135deg,#7c3aed,#4f46e5);padding:13px 16px;display:flex;align-items:center;gap:10px;">
     <i class="fa fa-wand-magic-sparkles" style="color:#fff;font-size:1rem;"></i>
@@ -559,10 +588,21 @@ body.sidebar-collapsed #main{margin-left:var(--sidebar-collapsed)}
     <div style="border-top:1px solid #ede9fe;padding-top:9px;">
       <div style="font-size:.7rem;color:#a78bfa;font-weight:700;margin-bottom:5px;letter-spacing:.5px;">TRY SAYING:</div>
       <div style="display:flex;flex-wrap:wrap;gap:5px;">
-        <span onclick="quickAsk(this)" style="font-size:.7rem;background:#f5f3ff;color:#6d28d9;border:1px solid #ddd6fe;border-radius:20px;padding:3px 9px;cursor:pointer;">"Today highest sale"</span>
-        <span onclick="quickAsk(this)" style="font-size:.7rem;background:#f5f3ff;color:#6d28d9;border:1px solid #ddd6fe;border-radius:20px;padding:3px 9px;cursor:pointer;">"Total sales today"</span>
-        <span onclick="quickAsk(this)" style="font-size:.7rem;background:#f5f3ff;color:#6d28d9;border:1px solid #ddd6fe;border-radius:20px;padding:3px 9px;cursor:pointer;">"Pending invoices"</span>
-        <span onclick="quickAsk(this)" style="font-size:.7rem;background:#f5f3ff;color:#6d28d9;border:1px solid #ddd6fe;border-radius:20px;padding:3px 9px;cursor:pointer;">"Sales this month"</span>
+        <span onclick="quickAsk(this)" style="font-size:.7rem;background:#f5f3ff;color:#6d28d9;border:1px solid #ddd6fe;border-radius:20px;padding:3px 9px;cursor:pointer;">New GST invoice</span>
+        <span onclick="quickAsk(this)" style="font-size:.7rem;background:#f5f3ff;color:#6d28d9;border:1px solid #ddd6fe;border-radius:20px;padding:3px 9px;cursor:pointer;">New proforma invoice</span>
+        <span onclick="quickAsk(this)" style="font-size:.7rem;background:#f5f3ff;color:#6d28d9;border:1px solid #ddd6fe;border-radius:20px;padding:3px 9px;cursor:pointer;">Print invoice</span>
+        <span onclick="quickAsk(this)" style="font-size:.7rem;background:#f5f3ff;color:#6d28d9;border:1px solid #ddd6fe;border-radius:20px;padding:3px 9px;cursor:pointer;">Edit invoice</span>
+        <span onclick="quickAsk(this)" style="font-size:.7rem;background:#f5f3ff;color:#6d28d9;border:1px solid #ddd6fe;border-radius:20px;padding:3px 9px;cursor:pointer;">Send on WhatsApp</span>
+        <span onclick="quickAsk(this)" style="font-size:.7rem;background:#dcfce7;color:#166534;border:1px solid #bbf7d0;border-radius:20px;padding:3px 9px;cursor:pointer;">PDF send WhatsApp</span>
+        <span onclick="quickAsk(this)" style="font-size:.7rem;background:#f5f3ff;color:#6d28d9;border:1px solid #ddd6fe;border-radius:20px;padding:3px 9px;cursor:pointer;">Send email</span>
+        <span onclick="quickAsk(this)" style="font-size:.7rem;background:#f5f3ff;color:#6d28d9;border:1px solid #ddd6fe;border-radius:20px;padding:3px 9px;cursor:pointer;">Total sales today</span>
+        <span onclick="quickAsk(this)" style="font-size:.7rem;background:#f5f3ff;color:#6d28d9;border:1px solid #ddd6fe;border-radius:20px;padding:3px 9px;cursor:pointer;">Sales this month</span>
+        <span onclick="quickAsk(this)" style="font-size:.7rem;background:#f5f3ff;color:#6d28d9;border:1px solid #ddd6fe;border-radius:20px;padding:3px 9px;cursor:pointer;">Pending invoices</span>
+        <span onclick="quickAsk(this)" style="font-size:.7rem;background:#f5f3ff;color:#6d28d9;border:1px solid #ddd6fe;border-radius:20px;padding:3px 9px;cursor:pointer;">Today highest sale</span>
+        <span onclick="quickAsk(this)" style="font-size:.7rem;background:#f5f3ff;color:#6d28d9;border:1px solid #ddd6fe;border-radius:20px;padding:3px 9px;cursor:pointer;">Last invoice</span>
+        <span onclick="quickAsk(this)" style="font-size:.7rem;background:#f5f3ff;color:#6d28d9;border:1px solid #ddd6fe;border-radius:20px;padding:3px 9px;cursor:pointer;">Open dashboard</span>
+        <span onclick="quickAsk(this)" style="font-size:.7rem;background:#f5f3ff;color:#6d28d9;border:1px solid #ddd6fe;border-radius:20px;padding:3px 9px;cursor:pointer;">Invoice list</span>
+        <span onclick="quickAsk(this)" style="font-size:.7rem;background:#f5f3ff;color:#6d28d9;border:1px solid #ddd6fe;border-radius:20px;padding:3px 9px;cursor:pointer;">Help</span>
       </div>
     </div>
   </div>
@@ -769,55 +809,176 @@ function getCurrentInvoicePk(){
 }
 
 function processVoiceQuery(text){
-  var lower = text.toLowerCase();
+  var lower = text.toLowerCase().trim();
 
-  // ── WhatsApp command (handled locally) ──────────────
-  if((lower.includes('whatsapp') || lower.includes('whats app') || lower.includes('watsapp')) &&
-     (lower.includes('send') || lower.includes('open') || lower.includes('bhej') || lower.includes('share'))){
+  function vaReply(msg, action, delay){
+    showVaReply(msg);
+    if(action){
+      speakResponse(msg);
+      setTimeout(function(){ window.location.href = action; }, delay || 2000);
+    } else {
+      speakResponse(msg);
+    }
+  }
+
+  function vaAction(msg, fn, delay){
+    showVaReply(msg);
+    speakResponse(msg);
+    setTimeout(fn, delay || 1800);
+  }
+
+  function noInvoice(){ vaReply('Please open an invoice first, then try that command.'); }
+
+  // ── PDF + WhatsApp combined ───────────────────────────
+  var isWA = lower.includes('whatsapp')||lower.includes('whats app')||lower.includes('watsapp');
+  var isPDF = lower.includes('pdf')||lower.includes('print');
+  if(isWA && isPDF){
     var wpk = getCurrentInvoicePk();
-    if(wpk){
-      showVaReply('Opening WhatsApp for this invoice. Please wait...');
-      speakResponse('Opening WhatsApp for this invoice.');
-      setTimeout(function(){
-        if(typeof sendWhatsApp === 'function') sendWhatsApp(wpk);
-      }, 1800);
-    } else {
-      showVaReply('Please open an invoice first, then say send on WhatsApp.');
-      speakResponse('Please open an invoice first, then say send on WhatsApp.');
-    }
+    if(wpk){ showVaReply('Creating PDF and opening WhatsApp...'); speakResponse('Creating PDF and sending on WhatsApp.'); setTimeout(function(){ sharePdfWhatsApp(wpk); },1800); }
+    else noInvoice();
     return;
   }
 
-  // ── Email command (handled locally) ─────────────────
-  if(lower.includes('email') && (lower.includes('send') || lower.includes('bhej') || lower.includes('open'))){
+  // ── WhatsApp only ─────────────────────────────────────
+  if(isWA&&(lower.includes('send')||lower.includes('open')||lower.includes('bhej')||lower.includes('share'))){
+    var wpk2 = getCurrentInvoicePk();
+    if(wpk2){ vaAction('Sending invoice on WhatsApp.',function(){ if(typeof sendWhatsApp==='function') sendWhatsApp(wpk2); }); }
+    else noInvoice();
+    return;
+  }
+
+  // ── Email ─────────────────────────────────────────────
+  if(lower.includes('email')&&(lower.includes('send')||lower.includes('bhej')||lower.includes('open'))){
     var epk = getCurrentInvoicePk();
-    if(epk){
-      showVaReply('Opening email for this invoice...');
-      speakResponse('Opening email for this invoice.');
-      setTimeout(function(){
-        if(typeof openEmailModal === 'function') openEmailModal(epk, '');
-      }, 1800);
-    } else {
-      showVaReply('Please open an invoice first, then say send email.');
-      speakResponse('Please open an invoice first, then say send email.');
-    }
+    if(epk){ vaAction('Opening email for this invoice.',function(){ if(typeof openEmailModal==='function') openEmailModal(epk,''); }); }
+    else noInvoice();
     return;
   }
 
-  // ── Backend query ────────────────────────────────────
+  // ── Print / PDF ───────────────────────────────────────
+  if(lower.includes('print')||lower.includes('pdf')||(lower.includes('nikalo')&&lower.includes('bill'))){
+    var ppk = getCurrentInvoicePk();
+    if(ppk){ vaAction('Opening print options for this invoice.',function(){ if(typeof ctcPrint==='function') ctcPrint('/sales/invoices/'+ppk+'/pdf/'); }); }
+    else vaReply('Please open an invoice to print it.',null);
+    return;
+  }
+
+  // ── Edit / Modify ─────────────────────────────────────
+  if(lower.includes('edit')||lower.includes('modify')||lower.includes('change')||lower.includes('badlo')||lower.includes('update invoice')){
+    var mpk = getCurrentInvoicePk();
+    if(mpk){ vaReply('Opening invoice editor.','/sales/invoices/'+mpk+'/edit/'); }
+    else vaReply('Please open an invoice first to edit it.',null);
+    return;
+  }
+
+  // ── Delete ────────────────────────────────────────────
+  if((lower.includes('delete')||lower.includes('remove')||lower.includes('hatao'))&&lower.includes('invoice')){
+    var dpk = getCurrentInvoicePk();
+    if(dpk){
+      showVaReply('Say yes to confirm delete, or tap cancel.');
+      speakResponse('Are you sure you want to delete this invoice? Tap delete button to confirm.');
+      setTimeout(function(){
+        if(confirm('Delete this invoice?')) window.location.href='/sales/invoices/delete/'+dpk+'/';
+      },2200);
+    } else noInvoice();
+    return;
+  }
+
+  // ── New invoice shortcuts (frontend — instant) ────────
+  if((lower.includes('new')||lower.includes('create')||lower.includes('add')||lower.includes('naya'))&&lower.includes('gst')){
+    vaReply('Opening new GST invoice.','/sales/invoices/add/?type=gst'); return;
+  }
+  if((lower.includes('new')||lower.includes('create')||lower.includes('add')||lower.includes('naya'))&&lower.includes('proforma')){
+    vaReply('Opening new proforma invoice.','/sales/invoices/add/?type=proforma'); return;
+  }
+  if((lower.includes('new')||lower.includes('create')||lower.includes('add')||lower.includes('naya'))&&lower.includes('export')){
+    vaReply('Opening new export invoice.','/sales/export/invoice/'); return;
+  }
+  if((lower.includes('new')||lower.includes('create')||lower.includes('add')||lower.includes('naya'))&&(lower.includes('invoice')||lower.includes('bill'))){
+    vaReply('Opening new GST invoice.','/sales/invoices/add/?type=gst'); return;
+  }
+
+  // ── Go back ───────────────────────────────────────────
+  if(lower.includes('go back')||lower.includes('wapas')||lower.includes('back page')||lower==='back'){
+    vaReply('Going back.');
+    setTimeout(function(){ history.back(); },1500);
+    return;
+  }
+
+  // ── Quick navigation (frontend — instant) ─────────────
+  var navMap = [
+    {k:['dashboard','home','main page','ghar'],u:'/dashboard/',m:'Opening dashboard.'},
+    {k:['invoice list','all invoice','show invoice','bill list','list invoice'],u:'/sales/invoices/',m:'Opening invoice list.'},
+    {k:['customer list','party list','party master','khata list'],u:'/masters/party/',m:'Opening customer list.'},
+    {k:['product list','product master','item list','item master'],u:'/masters/products/',m:'Opening product list.'},
+    {k:['purchase','kharid'],u:'/purchase/bills/',m:'Opening purchase bills.'},
+    {k:['receive payment','payment receive','add payment'],u:'/payments/receive/',m:'Opening receive payment.'},
+    {k:['payment receipt','receipt list'],u:'/payments/receipt/',m:'Opening payment receipts.'},
+    {k:['report','sales report'],u:'/reports/',m:'Opening reports.'},
+    {k:['user management','staff list','manage user','user list'],u:'/users/',m:'Opening user management.'},
+    {k:['credit note'],u:'/credit-note/',m:'Opening credit notes.'},
+    {k:['service','call receive'],u:'/service/',m:'Opening service module.'},
+    {k:['category'],u:'/masters/categories/',m:'Opening categories.'},
+    {k:['logout','log out','sign out','bahar'],u:'/logout/',m:'Logging you out. Goodbye!'},
+  ];
+  for(var ni=0;ni<navMap.length;ni++){
+    var nm=navMap[ni];
+    if(nm.k.some(function(k){ return lower.includes(k); })){
+      vaReply(nm.m,nm.u); return;
+    }
+  }
+
+  // ── Backend query (data/stats/lookup) ─────────────────
+  setVaState('processing','Let me check that...');
   fetch('/voice-assistant/?q=' + encodeURIComponent(text))
-    .then(r => r.json())
-    .then(data => {
+    .then(function(r){ return r.json(); })
+    .then(function(data){
       showVaReply(data.speak || '');
-      if(data.action && data.action.match(/\/sales\/invoices\/(\d+)\//)){
+      if(data.action){
         var m2 = data.action.match(/\/sales\/invoices\/(\d+)\//);
         if(m2) _vaLastInvoicePk = m2[1];
       }
       speakResponse(data.speak, data.action);
     })
     .catch(function(){
-      setVaState('error','Server error. Try again.');
+      setVaState('error','Server error. Please try again.');
     });
+}
+
+function sharePdfWhatsApp(pk){
+  setVaState('processing','Creating PDF...');
+  fetch('/sales/invoices/' + pk + '/pdf/')
+    .then(function(r){ return r.blob(); })
+    .then(function(blob){
+      var file = new File([blob], 'Invoice.pdf', {type:'application/pdf'});
+      // Mobile: Web Share API with file attachment
+      if(navigator.canShare && navigator.canShare({files:[file]})){
+        navigator.share({files:[file], title:'Invoice PDF', text:'Please find the invoice attached.'})
+          .then(function(){ setVaState('idle','Shared successfully!'); speakQuiet('Invoice shared on WhatsApp.'); })
+          .catch(function(e){
+            if(e.name !== 'AbortError') _shareFallback(pk, blob);
+          });
+      } else {
+        _shareFallback(pk, blob);
+      }
+    })
+    .catch(function(){
+      // PDF fetch failed — just send text via WhatsApp
+      showVaReply('Could not create PDF. Sending invoice details on WhatsApp instead.');
+      speakQuiet('Sending invoice details on WhatsApp.');
+      setTimeout(function(){ if(typeof sendWhatsApp==='function') sendWhatsApp(pk); }, 1500);
+    });
+}
+
+function _shareFallback(pk, blob){
+  // Desktop fallback: download PDF then open WhatsApp message
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = 'Invoice.pdf'; a.click();
+  URL.revokeObjectURL(url);
+  setVaState('idle','PDF downloaded! Opening WhatsApp now...');
+  speakQuiet('PDF downloaded. Opening WhatsApp now.');
+  setTimeout(function(){ if(typeof sendWhatsApp==='function') sendWhatsApp(pk); }, 2000);
 }
 
 function showVaReply(msg){
@@ -900,10 +1061,27 @@ updateTime(); setInterval(updateTime,1000);
 
 // Sidebar toggle
 function toggleSidebar(){
-  document.body.classList.toggle('sidebar-collapsed');
-  localStorage.setItem('sidebar',document.body.classList.contains('sidebar-collapsed')?'collapsed':'open');
+  if(window.innerWidth <= 768){
+    document.body.classList.toggle('sidebar-open');
+  } else {
+    document.body.classList.toggle('sidebar-collapsed');
+    localStorage.setItem('sidebar',document.body.classList.contains('sidebar-collapsed')?'collapsed':'open');
+  }
 }
 if(localStorage.getItem('sidebar')==='collapsed') document.body.classList.add('sidebar-collapsed');
+// Tap overlay to close sidebar on mobile
+document.addEventListener('click', function(e){
+  if(window.innerWidth <= 768 && document.body.classList.contains('sidebar-open')){
+    if(!document.getElementById('sidebar').contains(e.target) && e.target.id !== 'sidebar-toggle'){
+      document.body.classList.remove('sidebar-open');
+    }
+  }
+});
+// Show drag handle on mobile
+if(window.innerWidth <= 768){
+  var dh = document.querySelector('.va-drag-handle');
+  if(dh) dh.style.display = 'flex';
+}
 
 // Active nav
 (function(){

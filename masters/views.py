@@ -812,6 +812,21 @@ def voice_assistant(request):
     if not query:
         return JsonResponse({'speak': 'Yes, I am listening. Please ask your question.', 'action': None})
 
+    try:
+        return _voice_assistant_handle(request, query)
+    except Exception as exc:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'speak': f'Sorry, something went wrong on the server. Error: {str(exc)[:80]}', 'action': None})
+
+
+def _voice_assistant_handle(request, query):
+    import datetime
+    import re
+    from django.db.models import Sum, Max, Q
+    from sales.models import SalesInvoice
+    from difflib import get_close_matches
+
     today = datetime.date.today()
     role = get_user_role(request.user)
     can_see_amounts = request.user.is_superuser or role in ('admin', 'owner', 'accounts', 'manager')
@@ -949,34 +964,107 @@ def voice_assistant(request):
                     matches_i = [i for i, n in enumerate(norm) if digits in n]
             if matches_i:
                 inv = SalesInvoice.objects.get(invoice_number=all_invs[matches_i[0]])
-                    creator = inv.created_by.get_full_name() or inv.created_by.username if inv.created_by else 'unknown'
-                    created_time = inv.created_at.strftime('%d %B %Y at %I:%M %p') if inv.created_at else 'unknown time'
-                    if can_see_amounts:
-                        msg = (f"Invoice {inv.invoice_number} is for customer {inv.customer.name}, "
-                               f"amount {_indian_rupees(inv.total_amount)}, status {inv.status}, "
-                               f"created by {creator} on {created_time}.")
-                    else:
-                        msg = (f"Invoice {inv.invoice_number} is for customer {inv.customer.name}, "
-                               f"status {inv.status}, created by {creator} on {created_time}.")
-                    return JsonResponse({'speak': msg, 'action': f'/sales/invoices/{inv.pk}/'})
+                creator = inv.created_by.get_full_name() or inv.created_by.username if inv.created_by else 'unknown'
+                created_time = inv.created_at.strftime('%d %B %Y at %I:%M %p') if inv.created_at else 'unknown time'
+                if can_see_amounts:
+                    msg = (f"Invoice {inv.invoice_number} is for customer {inv.customer.name}, "
+                           f"amount {_indian_rupees(inv.total_amount)}, status {inv.status}, "
+                           f"created by {creator} on {created_time}.")
+                else:
+                    msg = (f"Invoice {inv.invoice_number} is for customer {inv.customer.name}, "
+                           f"status {inv.status}, created by {creator} on {created_time}.")
+                return JsonResponse({'speak': msg, 'action': f'/sales/invoices/{inv.pk}/'})
             break
+
+    # ── sales this month / this week ─────────────────────
+    if any(k in query for k in ['this month', 'monthly sale', 'month total', 'is month']):
+        if not can_see_amounts:
+            return JsonResponse(DENIED)
+        import calendar
+        first_day = today.replace(day=1)
+        qs = SalesInvoice.objects.filter(invoice_date__gte=first_day, invoice_date__lte=today)
+        count = qs.count()
+        total = qs.aggregate(t=Sum('total_amount'))['t'] or 0
+        return JsonResponse({'speak': f"This month {count} invoices, total sales {_indian_rupees(total)}.", 'action': '/sales/invoices/'})
+
+    # ── paid invoices ─────────────────────────────────────
+    if any(k in query for k in ['paid invoice', 'cleared invoice', 'jama invoice']):
+        count = SalesInvoice.objects.filter(status='paid').count()
+        if can_see_amounts:
+            total = SalesInvoice.objects.filter(status='paid').aggregate(t=Sum('total_amount'))['t'] or 0
+            return JsonResponse({'speak': f"There are {count} paid invoices totaling {_indian_rupees(total)}.", 'action': '/sales/invoices/'})
+        return JsonResponse({'speak': f"There are {count} paid invoices.", 'action': '/sales/invoices/'})
+
+    # ── partial invoices ──────────────────────────────────
+    if any(k in query for k in ['partial invoice', 'partial payment', 'adha payment']):
+        count = SalesInvoice.objects.filter(status='partial').count()
+        return JsonResponse({'speak': f"There are {count} invoices with partial payment.", 'action': '/sales/invoices/'})
+
+    # ── total customers ───────────────────────────────────
+    if any(k in query for k in ['total customer', 'how many customer', 'kitne customer', 'customer count']):
+        from masters.models import Customer
+        count = Customer.objects.filter(is_active=True).count()
+        return JsonResponse({'speak': f"There are {count} active customers in the system.", 'action': '/masters/party/'})
+
+    # ── total products ────────────────────────────────────
+    if any(k in query for k in ['total product', 'how many product', 'kitne product', 'product count', 'item count']):
+        from masters.models import Product
+        count = Product.objects.filter(is_active=True).count()
+        return JsonResponse({'speak': f"There are {count} active products in the system.", 'action': '/masters/products/'})
+
+    # ── last invoice ──────────────────────────────────────
+    if any(k in query for k in ['last invoice', 'latest invoice', 'recent invoice', 'pichla invoice']):
+        inv = SalesInvoice.objects.order_by('-pk').first()
+        if inv:
+            creator = inv.created_by.get_full_name() or inv.created_by.username if inv.created_by else 'unknown'
+            if can_see_amounts:
+                msg = f"Last invoice is {inv.invoice_number} for {inv.customer.name}, amount {_indian_rupees(inv.total_amount)}, created by {creator}."
+            else:
+                msg = f"Last invoice is {inv.invoice_number} for {inv.customer.name}, created by {creator}."
+            return JsonResponse({'speak': msg, 'action': f'/sales/invoices/{inv.pk}/'})
+
+    # ── who created this invoice (must have PK in query from frontend action field) ──
+    if any(k in query for k in ['who created', 'kisne banaya', 'created by', 'who made']):
+        inv = SalesInvoice.objects.order_by('-pk').first()
+        if inv and inv.created_by:
+            creator = inv.created_by.get_full_name() or inv.created_by.username
+            t = inv.created_at.strftime('%d %B at %I:%M %p') if inv.created_at else ''
+            return JsonResponse({'speak': f"Invoice {inv.invoice_number} was created by {creator} on {t}.", 'action': f'/sales/invoices/{inv.pk}/'})
+        return JsonResponse({'speak': "I could not find that information.", 'action': None})
+
+    # ── what can you do / help ────────────────────────────
+    if any(k in query for k in ['help', 'what can you do', 'commands', 'kya kar sakte', 'list command']):
+        msg = ("I can: open new GST or proforma invoice, open invoice list, show dashboard, "
+               "tell today's total sales, highest sale, pending invoices, paid invoices, this month sales, "
+               "find invoice by number, show last invoice, customer balance, customer count, product count, "
+               "print invoice, edit invoice, send on WhatsApp or email, tell time and date. Just ask!")
+        return JsonResponse({'speak': msg, 'action': None})
 
     # ── go to page ────────────────────────────────────────
     nav_map = [
-        (['dashboard', 'home', 'ghar'], '/dashboard/', 'Opening dashboard.'),
-        (['invoice list', 'all invoice', 'sales list', 'invoice dekho'], '/sales/invoices/', 'Opening invoice list.'),
-        (['new invoice', 'add invoice', 'create invoice', 'naya bill'], '/sales/invoices/add/?type=gst', 'Opening new invoice form.'),
-        (['customer list', 'customer master', 'khata list'], '/masters/customers/', 'Opening customer list.'),
-        (['product', 'item list'], '/masters/products/', 'Opening product list.'),
-        (['purchase', 'bill list'], '/purchase/bills/', 'Opening purchase bills.'),
-        (['payment', 'receive payment'], '/payments/receive/', 'Opening receive payment.'),
-        (['user management', 'staff list'], '/users/', 'Opening user management.'),
+        (['dashboard', 'home', 'ghar', 'main page'], '/dashboard/', 'Opening dashboard.'),
+        (['invoice list', 'all invoice', 'sales list', 'invoice dekho', 'show all bill', 'list invoice'], '/sales/invoices/', 'Opening invoice list.'),
+        (['new gst', 'create gst', 'gst invoice bana', 'add gst', 'naya gst'], '/sales/invoices/add/?type=gst', 'Opening new GST invoice form.'),
+        (['new proforma', 'create proforma', 'proforma bana', 'add proforma'], '/sales/invoices/add/?type=proforma', 'Opening new proforma invoice.'),
+        (['new export', 'create export', 'export invoice bana'], '/sales/export/invoice/', 'Opening new export invoice.'),
+        (['new invoice', 'add invoice', 'create invoice', 'naya bill', 'naya invoice'], '/sales/invoices/add/?type=gst', 'Opening new GST invoice.'),
+        (['customer list', 'customer master', 'khata list', 'party list', 'party master'], '/masters/party/', 'Opening customer list.'),
+        (['product list', 'product master', 'item list', 'item master'], '/masters/products/', 'Opening product list.'),
+        (['purchase list', 'purchase bill', 'kharid'], '/purchase/bills/', 'Opening purchase bills.'),
+        (['receive payment', 'payment receive', 'add payment'], '/payments/receive/', 'Opening receive payment.'),
+        (['payment receipt', 'receipt list'], '/payments/receipt/', 'Opening payment receipts.'),
+        (['user management', 'staff list', 'manage user', 'user list'], '/users/', 'Opening user management.'),
+        (['report', 'sales report', 'report dekho'], '/reports/', 'Opening reports.'),
+        (['category', 'categories'], '/masters/categories/', 'Opening categories.'),
+        (['credit note', 'credit list'], '/credit-note/', 'Opening credit notes.'),
+        (['service', 'call receive', 'complaint'], '/service/', 'Opening service module.'),
+        (['logout', 'sign out', 'log out', 'bahar jao'], '/logout/', 'Logging you out. Goodbye!'),
     ]
     for keywords, url, msg in nav_map:
         if any(k in query for k in keywords):
             return JsonResponse({'speak': msg, 'action': url})
 
-    return JsonResponse({'speak': f"Sorry {uname}, I did not understand that. Try saying: today highest sale, total sales today, what time is it, or show bill of customer name.", 'action': None})
+    return JsonResponse({'speak': f"Sorry {uname}, I did not understand that. Say help to hear all available commands.", 'action': None})
 
 
 def generate_alpha_code(model_class, name):
