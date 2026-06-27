@@ -883,22 +883,71 @@ def voice_assistant(request):
                     return JsonResponse({'speak': f"{cust.name} has outstanding balance of rupees {int(balance)}.", 'action': f'/masters/customers/'})
                 return JsonResponse({'speak': f'Customer {cname} not found.', 'action': None})
 
+    # ── what time / what day ──────────────────────────────
+    if any(k in query for k in ['what time', 'time now', 'current time', 'kitna baja', 'time kya']):
+        now = datetime.datetime.now()
+        t = now.strftime('%I:%M %p').lstrip('0')
+        return JsonResponse({'speak': f'The current time is {t}.', 'action': None})
+
+    if any(k in query for k in ['what day', 'which day', 'aaj kya', 'today date', 'what is today', 'todays date', "today's date"]):
+        day = today.strftime('%A, %d %B %Y')
+        return JsonResponse({'speak': f'Today is {day}.', 'action': None})
+
+    # ── greetings ─────────────────────────────────────────
+    uname = request.user.first_name or request.user.username
+    if any(k in query for k in ['hello', 'hi ', 'hey', 'hii', 'namaste', 'namaskar']):
+        h = datetime.datetime.now().hour
+        greet = 'Good morning' if h < 12 else ('Good afternoon' if h < 17 else 'Good evening')
+        return JsonResponse({'speak': f'{greet}, {uname}! I am your CTC voice assistant. How can I help you today?', 'action': None})
+
+    # ── invoice lookup by number ──────────────────────────
+    for kw in ['invoice', 'bill number', 'inv']:
+        if kw in query:
+            # extract alphanumeric token after keyword
+            import re
+            raw = query.split(kw, 1)[-1].strip()
+            # convert spoken digits to numbers: "five five six" → "556"
+            word_nums = {'zero':'0','one':'1','two':'2','three':'3','four':'4','five':'5','six':'6','seven':'7','eight':'8','nine':'9'}
+            for w,d in word_nums.items():
+                raw = raw.replace(w, d)
+            token = re.sub(r'[^a-z0-9]', '', raw.lower())
+            if token:
+                # fuzzy search in invoice numbers
+                all_invs = list(SalesInvoice.objects.all().values_list('invoice_number', flat=True))
+                norm = [n.lower().replace('-','').replace('/','') for n in all_invs]
+                matches_i = [i for i,n in enumerate(norm) if token in n or n in token]
+                if not matches_i:
+                    matches_i = [i for i,n in enumerate(norm) if any(c in n for c in token)]
+                if matches_i:
+                    inv = SalesInvoice.objects.get(invoice_number=all_invs[matches_i[0]])
+                    creator = inv.created_by.get_full_name() or inv.created_by.username if inv.created_by else 'unknown'
+                    created_time = inv.created_at.strftime('%d %B %Y at %I:%M %p') if inv.created_at else 'unknown time'
+                    if can_see_amounts:
+                        msg = (f"Invoice {inv.invoice_number} is for customer {inv.customer.name}, "
+                               f"amount rupees {int(inv.total_amount)}, status {inv.status}, "
+                               f"created by {creator} on {created_time}.")
+                    else:
+                        msg = (f"Invoice {inv.invoice_number} is for customer {inv.customer.name}, "
+                               f"status {inv.status}, created by {creator} on {created_time}.")
+                    return JsonResponse({'speak': msg, 'action': f'/sales/invoices/{inv.pk}/'})
+            break
+
     # ── go to page ────────────────────────────────────────
     nav_map = [
         (['dashboard', 'home', 'ghar'], '/dashboard/', 'Opening dashboard.'),
         (['invoice list', 'all invoice', 'sales list', 'invoice dekho'], '/sales/invoices/', 'Opening invoice list.'),
         (['new invoice', 'add invoice', 'create invoice', 'naya bill'], '/sales/invoices/add/?type=gst', 'Opening new invoice form.'),
-        (['customer', 'khata'], '/masters/customers/', 'Opening customer list.'),
+        (['customer list', 'customer master', 'khata list'], '/masters/customers/', 'Opening customer list.'),
         (['product', 'item list'], '/masters/products/', 'Opening product list.'),
         (['purchase', 'bill list'], '/purchase/bills/', 'Opening purchase bills.'),
         (['payment', 'receive payment'], '/payments/receive/', 'Opening receive payment.'),
-        (['user', 'staff'], '/users/', 'Opening user management.'),
+        (['user management', 'staff list'], '/users/', 'Opening user management.'),
     ]
     for keywords, url, msg in nav_map:
         if any(k in query for k in keywords):
             return JsonResponse({'speak': msg, 'action': url})
 
-    return JsonResponse({'speak': f"Sorry, I did not understand. You said: {query}. Try asking 'today highest sale', 'total sales today', or 'show bill of customer name'.", 'action': None})
+    return JsonResponse({'speak': f"Sorry {uname}, I did not understand that. Try saying: today highest sale, total sales today, what time is it, or show bill of customer name.", 'action': None})
 
 
 def generate_alpha_code(model_class, name):

@@ -682,52 +682,66 @@ function startVoice(){
 
   _vaRecognition = new SR();
   _vaRecognition.lang = 'en-IN';
-  _vaRecognition.interimResults = true;   // show words as user speaks
+  _vaRecognition.interimResults = true;
   _vaRecognition.maxAlternatives = 3;
-  _vaRecognition.continuous = false;       // auto-stops after silence
+  _vaRecognition.continuous = true;   // keeps mic open — auto-submits on pause
 
   _vaListening = true; _vaGotResult = false;
   document.getElementById('vaTranscript').style.display = 'none';
   document.getElementById('vaResponse').style.display = 'none';
   setVaState('listening');
+  speakQuiet('Yes ' + _vaUserName + ', I am listening.');
 
-  // Speak listening prompt when mic opens
-  speakQuiet('Yes, ' + _vaUserName + ', I am listening.');
+  var _finalText = '';
+  var _silenceTimer = null;
 
   _vaRecognition.onresult = function(e){
     var interim = '', final = '';
-    for(var i=0;i<e.results.length;i++){
-      if(e.results[i].isFinal) final += e.results[i][0].transcript;
+    for(var i = e.resultIndex; i < e.results.length; i++){
+      if(e.results[i].isFinal) final += e.results[i][0].transcript + ' ';
       else interim += e.results[i][0].transcript;
     }
-    var display = final || interim;
+    if(final) _finalText += final;
+    var display = (_finalText + interim).trim();
     var el = document.getElementById('vaTranscript');
     el.innerText = '"' + display + '"'; el.style.display = 'block';
-    if(final){ _vaGotResult = true; }
+
+    if(final){
+      _vaGotResult = true;
+      clearTimeout(_silenceTimer);
+      // auto-submit 1.4s after user stops speaking
+      _silenceTimer = setTimeout(function(){
+        if(_vaListening && _finalText.trim()){
+          _vaRecognition.stop();
+        }
+      }, 1400);
+    }
   };
 
   _vaRecognition.onend = function(){
+    clearTimeout(_silenceTimer);
     _vaListening = false;
-    var text = document.getElementById('vaTranscript').innerText.replace(/^"|"$/g,'').trim();
-    if(_vaGotResult && text){
-      setVaState('processing', 'Got it! Checking...');
-      processVoiceQuery(text);
-    } else if(!_vaGotResult){
-      setVaState('idle','No speech detected. Try again.');
-    }
     document.getElementById('voiceBtn').classList.remove('va-active');
+    var text = _finalText.trim() ||
+               document.getElementById('vaTranscript').innerText.replace(/^"|"$/g,'').trim();
+    if(_vaGotResult && text){
+      setVaState('processing','Got it! One moment...');
+      processVoiceQuery(text);
+    } else {
+      setVaState('idle','No speech heard. Tap mic and try again.');
+    }
   };
 
   _vaRecognition.onerror = function(e){
+    clearTimeout(_silenceTimer);
     _vaListening = false;
     var msgs = {
-      'network':'Network error. Please type below.',
-      'not-allowed':'Mic permission denied. Allow mic in browser.',
+      'network':'Network error — please type your question below.',
+      'not-allowed':'Mic permission denied. Allow mic in browser settings.',
       'no-speech':'Nothing heard. Please speak louder.',
       'aborted':'',
     };
-    var msg = msgs[e.error] || ('Error: ' + e.error);
-    if(e.error !== 'aborted') setVaState('error', msg);
+    if(e.error !== 'aborted') setVaState('error', msgs[e.error] || 'Error: ' + e.error);
     else setVaState('idle');
     if(e.error === 'network' || e.error === 'not-allowed')
       document.getElementById('vaTextInput').focus();
@@ -764,8 +778,8 @@ function speakResponse(text, action){
   var voice = getBestVoice();
   if(voice) utter.voice = voice;
   utter.lang = voice ? voice.lang : 'en-IN';
-  utter.rate = 1.0;
-  utter.pitch = 1.05;
+  utter.rate = 0.88;
+  utter.pitch = 1.0;
   utter.volume = 1.0;
   utter.onend = function(){
     setVaState('idle','Done! Tap mic for next question.');
@@ -784,7 +798,7 @@ function speakQuiet(text){
   var utter = new SpeechSynthesisUtterance(text);
   var voice = getBestVoice();
   if(voice) utter.voice = voice;
-  utter.rate = 1.1; utter.pitch = 1.1; utter.volume = 0.7;
+  utter.rate = 0.88; utter.pitch = 1.0; utter.volume = 0.85;
   window.speechSynthesis.speak(utter);
 }
 

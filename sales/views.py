@@ -91,7 +91,8 @@ def invoice_add(request):
                     bill_discount_pct=Decimal(str(request.POST.get("bill_discount_pct", 0) or 0)),
                     customer_mobile=request.POST.get("customer_mobile", "").strip(),
                     customer_email=request.POST.get("customer_email", "").strip(),
-                    subtotal=0, tax_amount=0, total_amount=0
+                    subtotal=0, tax_amount=0, total_amount=0,
+                    created_by=request.user
                 )
                 product_ids = request.POST.getlist("product[]")
                 descriptions = request.POST.getlist("description[]")

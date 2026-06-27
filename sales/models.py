@@ -1,4 +1,5 @@
 from django.db import models
+from django.contrib.auth.models import User
 from masters.models import Customer, Product
 
 class SalesInvoice(models.Model):
@@ -64,7 +65,8 @@ class SalesInvoice(models.Model):
     customer_mobile = models.CharField(max_length=15, blank=True)
     customer_email  = models.CharField(max_length=200, blank=True)
     share_token     = models.CharField(max_length=64, blank=True, unique=True, null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_by      = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='invoices_created')
+    created_at      = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"{self.invoice_number} - {self.customer.name}"
