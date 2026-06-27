@@ -575,6 +575,14 @@ var _vaListening = false;
 var _vaGotResult = false;
 var _vaSpeaking = false;
 var _vaVoices = [];
+var _vaUserName = "{{ request.user.first_name|default:request.user.username|title }}";
+
+function getGreeting(){
+  var h = new Date().getHours();
+  if(h < 12) return 'Good morning';
+  if(h < 17) return 'Good afternoon';
+  return 'Good evening';
+}
 
 // Load voices (Chrome loads them async)
 function loadVaVoices(){
@@ -607,6 +615,9 @@ function toggleVoicePanel(){
   if(_vaOpen){
     setVaState('idle');
     document.getElementById('vaTextInput').value = '';
+    var greet = getGreeting() + ', ' + _vaUserName + '! How can I help you?';
+    document.getElementById('vaStatus').innerText = greet;
+    setTimeout(function(){ speakQuiet(greet); }, 200);
   } else {
     stopVoice(); window.speechSynthesis.cancel();
   }
@@ -680,8 +691,8 @@ function startVoice(){
   document.getElementById('vaResponse').style.display = 'none';
   setVaState('listening');
 
-  // Speak greeting when mic opens
-  speakQuiet('Yes, I am listening.');
+  // Speak listening prompt when mic opens
+  speakQuiet('Yes, ' + _vaUserName + ', I am listening.');
 
   _vaRecognition.onresult = function(e){
     var interim = '', final = '';
