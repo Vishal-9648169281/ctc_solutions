@@ -44,7 +44,7 @@
 <div class="ctc-card">
     <div class="ctc-card-header"><span><i class="fa fa-list me-2"></i>Invoices ({{ invoices.count }} records)</span></div>
     <div class="ctc-card-body p-0">
-        <table class="table table-hover mb-0 ctc-datatable">
+        <table class="table table-hover mb-0">
             <thead><tr><th>#</th><th>Invoice No</th><th>Type</th><th>Customer</th><th>Date</th>{% if user_role != 'sales' %}<th>Total</th><th>Paid</th><th>Balance</th>{% endif %}<th>Status</th><th>Actions</th></tr></thead>
             <tbody>
             {% for inv in invoices %}
