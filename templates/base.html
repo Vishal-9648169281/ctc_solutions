@@ -884,12 +884,57 @@ function processVoiceQuery(text){
     return;
   }
 
+  // ── Edit specific invoice by number: "edit GST0562" ─
+  var editInvNum = lower.match(/edit\s+(?:invoice\s+|bill\s+)?((?:gst|inv|pro|bill)[-\s]?\d{2,6})/i)
+                || (lower.includes('edit') || lower.includes('modify') || lower.includes('badlo')
+                    ? lower.match(/((?:gst|inv|pro)[-\s]?\d{2,6})/i) : null);
+  if(editInvNum){
+    var eNum = editInvNum[1].replace(/\s+/g,'').toUpperCase();
+    setVaState('processing','Finding invoice '+eNum+'...');
+    fetch('/voice-assistant/?q=open+invoice+'+encodeURIComponent(eNum))
+      .then(function(r){ return r.text(); })
+      .then(function(txt){
+        var data = JSON.parse(txt);
+        if(data.action && data.action.match(/\/sales\/invoices\/\d+\//)){
+          var editUrl = data.action.replace(/\/?$/, '/').replace(/\/+$/, '/') + 'edit/';
+          // normalise double slashes
+          editUrl = editUrl.replace(/([^:])\/+/g, '$1/');
+          showVaReply('Opening invoice '+eNum+' in edit mode.');
+          speakResponse('Opening invoice editor.', editUrl);
+        } else {
+          showVaReply('Invoice '+eNum+' not found. Please check the number.');
+          speakResponse('Invoice '+eNum+' not found.');
+        }
+      }).catch(function(){ setVaState('error','Could not find invoice.'); });
+    return;
+  }
+
+  // ── Open invoice by number: "open GST0562" ───────────
+  var openInvNum = lower.match(/(?:open|show|find)\s+(?:invoice\s+|bill\s+)?((?:gst|inv|pro)[-\s]?\d{2,6})/i)
+                || lower.match(/^((?:gst|inv|pro)[-\s]?\d{2,6})$/i);
+  if(openInvNum){
+    var oNum = openInvNum[1].replace(/\s+/g,'').toUpperCase();
+    setVaState('processing','Finding invoice '+oNum+'...');
+    fetch('/voice-assistant/?q=open+invoice+'+encodeURIComponent(oNum))
+      .then(function(r){ return r.text(); })
+      .then(function(txt){
+        var data = JSON.parse(txt);
+        if(data.action){
+          showVaReply(data.speak || 'Opening invoice '+oNum);
+          speakResponse(data.speak || 'Opening invoice.', data.action);
+        } else {
+          showVaReply('Invoice '+oNum+' not found.');
+          speakResponse('Invoice '+oNum+' not found.');
+        }
+      }).catch(function(){ setVaState('error','Could not reach server.'); });
+    return;
+  }
+
   // ── Show invoices of [customer] ──────────────────────
   var custPatterns = [
-    /(?:open |show |find |search )?(?:invoice|invoices|bill|bills) (?:of|for) (.+)/,
-    /(?:open |show |find |search )?(?:all )?(?:invoice|invoices|bill|bills) (?:of|for) (.+)/,
+    /(?:open |show |find |search )?(?:all )?(?:gst |proforma |export )?(?:invoice|invoices|bill|bills) (?:of|for) (.+)/,
+    /(?:open |show |find |search )?(.+?) (?:gst |proforma |export )?(?:invoice|invoices|bill|bills)/,
     /(.+?) (?:ka bill|ki invoice|ke invoice|ka invoice|ke bill|ki bill)/,
-    /(?:show |open |find )?(.+?) (?:invoice|bill|bills|invoices)$/,
   ];
   var custName = null;
   for(var pi=0; pi<custPatterns.length; pi++){
