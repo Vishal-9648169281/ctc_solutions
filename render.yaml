@@ -3,7 +3,8 @@ services:
     name: ctc-solution
     env: python
     buildCommand: "./build.sh"
-    startCommand: "gunicorn ctc_solution.wsgi:application --bind 0.0.0.0:$PORT"
+    startCommand: "gunicorn ctc_solution.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 120"
+    healthCheckPath: /health/
     envVars:
       - key: DEBUG
         value: "False"
