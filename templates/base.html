@@ -884,6 +884,31 @@ function processVoiceQuery(text){
     return;
   }
 
+  // ── Show invoices of [customer] ──────────────────────
+  var custPatterns = [
+    /(?:open |show |find |search )?(?:invoice|invoices|bill|bills) (?:of|for) (.+)/,
+    /(?:open |show |find |search )?(?:all )?(?:invoice|invoices|bill|bills) (?:of|for) (.+)/,
+    /(.+?) (?:ka bill|ki invoice|ke invoice|ka invoice|ke bill|ki bill)/,
+    /(?:show |open |find )?(.+?) (?:invoice|bill|bills|invoices)$/,
+  ];
+  var custName = null;
+  for(var pi=0; pi<custPatterns.length; pi++){
+    var pm = lower.match(custPatterns[pi]);
+    if(pm && pm[1] && pm[1].trim().length > 1){
+      var extracted = pm[1].trim();
+      // exclude generic words that aren't customer names
+      var skip = ['list','all','gst','proforma','export','new','today','this','last','pending','paid'];
+      if(!skip.some(function(s){ return extracted === s; })){
+        custName = extracted; break;
+      }
+    }
+  }
+  if(custName){
+    var custUrl = '/sales/invoices/?q=' + encodeURIComponent(custName.toUpperCase());
+    vaReply('Showing all invoices for ' + custName + '.', custUrl, 1800);
+    return;
+  }
+
   // ── New invoice shortcuts (frontend — instant) ────────
   if((lower.includes('new')||lower.includes('create')||lower.includes('add')||lower.includes('naya'))&&lower.includes('gst')){
     vaReply('Opening new GST invoice.','/sales/invoices/add/?type=gst'); return;
