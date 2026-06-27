@@ -320,8 +320,9 @@ def _generate_invoice_pdf(request, pk):
     # ── 6. ITEMS TABLE ────────────────────────────────────
     # Cols: S.NO | Description | HSN/SAC | Qty | UOM | Rate | Taxable Rs. | CGST R | CGST A | UTGST R | UTGST A | IGST R | IGST A
     # 13 columns, NO DIS, NO last Amount col (matches sample image)
-    cw = [6*mm, 38*mm, 15*mm, 8*mm, 8*mm, 13*mm, 17*mm,
-          10*mm, 14*mm, 10*mm, 14*mm, 10*mm, 15*mm]
+    # S.NO | Description | HSN | Qty | UOM | Rate | Taxable | CGST% | CGST Amt | UTGST% | UTGST Amt | IGST% | IGST Amt
+    cw = [6*mm, 34*mm, 15*mm, 8*mm, 10*mm, 20*mm, 17*mm,
+          9*mm, 14*mm, 9*mm, 14*mm, 9*mm, 15*mm]
     # verify total ≈ W
     # 7+42+16+9+9+15+18+9+15+9+15+9+17 = 190mm — pad description to fill W
     cw[1] = W - sum(cw) + cw[1]
