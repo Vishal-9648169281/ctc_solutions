@@ -823,6 +823,7 @@ def voice_assistant(request):
 def _voice_assistant_handle(request, query):
     import datetime
     import re
+    _re = re
     from django.db.models import Sum, Max, Q
     from sales.models import SalesInvoice
     from difflib import get_close_matches
