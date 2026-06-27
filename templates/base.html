@@ -513,8 +513,17 @@ body.sidebar-collapsed #main{margin-left:var(--sidebar-collapsed)}
       <i class="fa fa-microphone" id="vaMicIcon"></i>
       <span id="vaMicLabel">Tap to Speak</span>
     </button>
+    <!-- Text fallback -->
+    <div style="margin-top:8px;display:flex;gap:6px;">
+      <input id="vaTextInput" type="text" placeholder="Or type your question here..." autocomplete="off"
+        style="flex:1;padding:8px 10px;border:1.5px solid #c4b5fd;border-radius:8px;font-size:.8rem;outline:none;"
+        onkeydown="if(event.key==='Enter'){sendVaText();}">
+      <button onclick="sendVaText()" style="padding:8px 12px;background:#7c3aed;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:.85rem;">
+        <i class="fa fa-paper-plane"></i>
+      </button>
+    </div>
     <div style="margin-top:10px;border-top:1px solid #e9e7ff;padding-top:8px;">
-      <div style="font-size:.72rem;color:#9ca3af;font-weight:600;margin-bottom:4px;">TRY SAYING:</div>
+      <div style="font-size:.72rem;color:#9ca3af;font-weight:600;margin-bottom:4px;">TRY SAYING / TYPING:</div>
       <div style="font-size:.72rem;color:#6b7280;line-height:1.6;">
         "Today highest sale"<br>
         "Total sales today"<br>
@@ -566,7 +575,14 @@ function startVoice(){
   };
   _vaRecognition.onerror = function(e){
     stopVoice();
-    document.getElementById('vaStatus').innerText = 'Error: ' + e.error + '. Try again.';
+    var msg = {
+      'network': 'Network error — Google speech server unreachable. Please type your question below instead.',
+      'not-allowed': 'Microphone permission denied. Please allow mic access in browser settings.',
+      'no-speech': 'No speech detected. Please speak clearly and try again.',
+      'aborted': 'Listening stopped.',
+    }[e.error] || ('Error: ' + e.error + '. Try typing below.');
+    document.getElementById('vaStatus').innerText = msg;
+    document.getElementById('vaTextInput').focus();
   };
   _vaRecognition.onend = function(){ stopVoice(); };
   _vaRecognition.start();
@@ -607,6 +623,17 @@ function speakResponse(text){
   if(pref) utter.voice = pref;
   window.speechSynthesis.cancel();
   window.speechSynthesis.speak(utter);
+}
+
+function sendVaText(){
+  var inp = document.getElementById('vaTextInput');
+  var text = inp.value.trim();
+  if(!text) return;
+  document.getElementById('vaTranscript').innerText = '"' + text + '"';
+  document.getElementById('vaStatus').innerText = 'Processing...';
+  document.getElementById('vaResponse').innerText = '';
+  inp.value = '';
+  processVoiceQuery(text);
 }
 
 // Keyboard shortcut: Alt+V to open/start voice
