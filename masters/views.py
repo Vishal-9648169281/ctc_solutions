@@ -782,6 +782,24 @@ def rate_modification(request):
     return render(request, 'masters/rate_modification.html', {'products': products})
 
 
+def _indian_rupees(amount):
+    """Convert number to Indian spoken format: 5 lakh 90 thousand 500"""
+    amount = int(amount)
+    if amount == 0:
+        return "zero rupees"
+    parts = []
+    crore   = amount // 10000000; amount %= 10000000
+    lakh    = amount // 100000;   amount %= 100000
+    thousand= amount // 1000;     amount %= 1000
+    hundred = amount // 100;      amount %= 100
+    if crore:    parts.append(f"{crore} crore")
+    if lakh:     parts.append(f"{lakh} lakh")
+    if thousand: parts.append(f"{thousand} thousand")
+    if hundred:  parts.append(f"{hundred} hundred")
+    if amount:   parts.append(str(amount))
+    return "rupees " + " ".join(parts)
+
+
 # ─── VOICE ASSISTANT ────────────────────────────────────
 @login_required
 def voice_assistant(request):
@@ -812,7 +830,7 @@ def voice_assistant(request):
             label = 'this month'
         if inv:
             return JsonResponse({
-                'speak': f"Highest sale {label} is invoice {inv.invoice_number} of {inv.customer.name} for rupees {int(inv.total_amount)}.",
+                'speak': f"Highest sale {label} is invoice {inv.invoice_number} of {inv.customer.name} for {_indian_rupees(inv.total_amount)}.",
                 'action': f'/sales/invoices/{inv.pk}/',
             })
         return JsonResponse({'speak': f'No sales found for {label}.', 'action': None})
@@ -824,18 +842,18 @@ def voice_assistant(request):
         if 'month' in query:
             total = SalesInvoice.objects.filter(invoice_date__month=today.month, invoice_date__year=today.year).aggregate(t=Sum('total_amount'))['t'] or 0
             count = SalesInvoice.objects.filter(invoice_date__month=today.month, invoice_date__year=today.year).count()
-            return JsonResponse({'speak': f'This month total sales are rupees {int(total)} across {count} invoices.', 'action': '/sales/invoices/'})
+            return JsonResponse({'speak': f'This month total sales are {_indian_rupees(total)} across {count} invoices.', 'action': '/sales/invoices/'})
         else:
             total = SalesInvoice.objects.filter(invoice_date=today).aggregate(t=Sum('total_amount'))['t'] or 0
             count = SalesInvoice.objects.filter(invoice_date=today).count()
-            return JsonResponse({'speak': f"Today's total sales are rupees {int(total)} across {count} invoices.", 'action': '/sales/invoices/?from_date=' + str(today) + '&to_date=' + str(today)})
+            return JsonResponse({'speak': f"Today's total sales are {_indian_rupees(total)} across {count} invoices.", 'action': '/sales/invoices/?from_date=' + str(today) + '&to_date=' + str(today)})
 
     # ── pending invoices ──────────────────────────────────
     if any(k in query for k in ['pending', 'unpaid', 'baaki', 'due']):
         count = SalesInvoice.objects.filter(status='pending').count()
         if can_see_amounts:
             total = SalesInvoice.objects.filter(status='pending').aggregate(t=Sum('total_amount'))['t'] or 0
-            return JsonResponse({'speak': f'There are {count} pending invoices totaling rupees {int(total)}.', 'action': '/sales/invoices/'})
+            return JsonResponse({'speak': f'There are {count} pending invoices totaling {_indian_rupees(total)}.', 'action': '/sales/invoices/'})
         return JsonResponse({'speak': f'There are {count} pending invoices.', 'action': '/sales/invoices/'})
 
     # ── how many invoices today ───────────────────────────
@@ -857,7 +875,7 @@ def voice_assistant(request):
                     inv = SalesInvoice.objects.filter(customer=cust).order_by('-invoice_date').first()
                     if inv:
                         if can_see_amounts:
-                            msg = f"Last invoice of {cust.name} is {inv.invoice_number} dated {inv.invoice_date} for rupees {int(inv.total_amount)}."
+                            msg = f"Last invoice of {cust.name} is {inv.invoice_number} dated {inv.invoice_date} for {_indian_rupees(inv.total_amount)}."
                         else:
                             msg = f"Last invoice of {cust.name} is {inv.invoice_number} dated {inv.invoice_date}."
                         return JsonResponse({'speak': msg, 'action': f'/sales/invoices/{inv.pk}/'})
@@ -880,7 +898,7 @@ def voice_assistant(request):
                     total_due = SalesInvoice.objects.filter(customer=cust).exclude(status='paid').aggregate(t=Sum('total_amount'))['t'] or 0
                     paid = SalesInvoice.objects.filter(customer=cust).aggregate(t=Sum('paid_amount'))['t'] or 0
                     balance = total_due - paid
-                    return JsonResponse({'speak': f"{cust.name} has outstanding balance of rupees {int(balance)}.", 'action': f'/masters/customers/'})
+                    return JsonResponse({'speak': f"{cust.name} has outstanding balance of {_indian_rupees(balance)}.", 'action': f'/masters/customers/'})
                 return JsonResponse({'speak': f'Customer {cname} not found.', 'action': None})
 
     # ── what time / what day ──────────────────────────────
@@ -924,7 +942,7 @@ def voice_assistant(request):
                     created_time = inv.created_at.strftime('%d %B %Y at %I:%M %p') if inv.created_at else 'unknown time'
                     if can_see_amounts:
                         msg = (f"Invoice {inv.invoice_number} is for customer {inv.customer.name}, "
-                               f"amount rupees {int(inv.total_amount)}, status {inv.status}, "
+                               f"amount {_indian_rupees(inv.total_amount)}, status {inv.status}, "
                                f"created by {creator} on {created_time}.")
                     else:
                         msg = (f"Invoice {inv.invoice_number} is for customer {inv.customer.name}, "
