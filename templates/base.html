@@ -898,6 +898,37 @@ function processVoiceQuery(text){
     vaReply('Opening new GST invoice.','/sales/invoices/add/?type=gst'); return;
   }
 
+  // ── Help / what can you do ────────────────────────────
+  if(lower.includes('help')||lower.includes('what can you do')||lower.includes('kya kar')||lower.includes('commands')){
+    var helpMsg = _vaUserName + ', I can do: new GST invoice, new proforma invoice, print invoice, edit invoice, '
+      +'delete invoice, send on WhatsApp, send PDF on WhatsApp, send email, open dashboard, invoice list, '
+      +'customer list, product list, purchase, reports, payments, user management, logout, go back. '
+      +'For data say: total sales today, this month sales, pending invoices, paid invoices, last invoice, '
+      +'highest sale, customer balance, total customers, total products, what time, what day. Just speak!';
+    showVaReply(helpMsg); speakResponse(helpMsg); return;
+  }
+
+  // ── Greetings ─────────────────────────────────────────
+  if(lower.includes('hello')||lower.includes('hi ')||lower==='hi'||lower.includes('hey')||lower.includes('namaste')){
+    var greetMsg = getGreeting()+', '+_vaUserName+'! I am your CTC voice assistant. How can I help you today?';
+    showVaReply(greetMsg); speakResponse(greetMsg); return;
+  }
+
+  // ── What time ─────────────────────────────────────────
+  if(lower.includes('what time')||lower.includes('time now')||lower.includes('time kya')||lower.includes('kitna baja')){
+    var now=new Date();
+    var t=now.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});
+    var msg='The current time is '+t+'.';
+    showVaReply(msg); speakResponse(msg); return;
+  }
+
+  // ── What day / date ───────────────────────────────────
+  if(lower.includes('what day')||lower.includes('today date')||lower.includes('which day')||lower.includes('aaj kya')||lower.includes("today's date")){
+    var d=new Date().toLocaleDateString('en-IN',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+    var msg2='Today is '+d+'.';
+    showVaReply(msg2); speakResponse(msg2); return;
+  }
+
   // ── Go back ───────────────────────────────────────────
   if(lower.includes('go back')||lower.includes('wapas')||lower.includes('back page')||lower==='back'){
     vaReply('Going back.');
