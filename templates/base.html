@@ -488,48 +488,81 @@ body.sidebar-collapsed #main{margin-left:var(--sidebar-collapsed)}
   <i class="fa fa-arrow-left"></i>
 </button>
 
+<!-- VA CSS animations -->
+<style>
+@keyframes va-pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.18);opacity:.85}}
+@keyframes va-wave{0%,100%{height:6px}50%{height:22px}}
+@keyframes va-spin{to{transform:rotate(360deg)}}
+#voiceBtn.va-active{animation:va-pulse .8s ease-in-out infinite;background:linear-gradient(135deg,#dc2626,#b91c1c)!important;box-shadow:0 0 0 8px rgba(220,38,38,.2)!important;}
+.va-bar{display:inline-block;width:4px;border-radius:3px;background:#7c3aed;margin:0 1.5px;animation:va-wave .6s ease-in-out infinite;}
+.va-bar:nth-child(2){animation-delay:.1s}
+.va-bar:nth-child(3){animation-delay:.2s}
+.va-bar:nth-child(4){animation-delay:.3s}
+.va-bar:nth-child(5){animation-delay:.4s}
+#vaSpeakWave .va-bar{background:#059669;}
+</style>
+
 <!-- Voice Assistant FAB -->
-<button id="voiceBtn" onclick="toggleVoicePanel()" title="Voice Assistant"
-  style="position:fixed;bottom:82px;right:24px;z-index:1040;width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#4f46e5);color:#fff;border:none;box-shadow:0 4px 16px rgba(124,58,237,.4);font-size:1.1rem;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s">
+<button id="voiceBtn" onclick="toggleVoicePanel()" title="Voice Assistant (Alt+V)"
+  style="position:fixed;bottom:82px;right:24px;z-index:1040;width:50px;height:50px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#4f46e5);color:#fff;border:none;box-shadow:0 4px 20px rgba(124,58,237,.5);font-size:1.15rem;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .3s">
   <i class="fa fa-microphone" id="voiceBtnIcon"></i>
 </button>
 
 <!-- Voice Assistant Panel -->
-<div id="voicePanel" style="display:none;position:fixed;bottom:140px;right:18px;z-index:1050;width:320px;background:#fff;border-radius:18px;box-shadow:0 8px 40px rgba(0,0,0,.18);overflow:hidden;font-family:'Inter',sans-serif;">
-  <div style="background:linear-gradient(135deg,#7c3aed,#4f46e5);padding:12px 16px;display:flex;align-items:center;gap:10px;">
-    <i class="fa fa-microphone" style="color:#fff;font-size:1rem;"></i>
-    <span style="color:#fff;font-weight:600;font-size:.9rem;flex:1">Voice Assistant</span>
-    <button onclick="toggleVoicePanel()" style="background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:50%;width:26px;height:26px;cursor:pointer;font-size:.8rem;"><i class="fa fa-times"></i></button>
+<div id="voicePanel" style="display:none;position:fixed;bottom:145px;right:16px;z-index:1050;width:330px;background:#fff;border-radius:20px;box-shadow:0 12px 50px rgba(0,0,0,.2);overflow:hidden;font-family:'Inter',sans-serif;">
+  <!-- Header -->
+  <div style="background:linear-gradient(135deg,#7c3aed,#4f46e5);padding:13px 16px;display:flex;align-items:center;gap:10px;">
+    <i class="fa fa-wand-magic-sparkles" style="color:#fff;font-size:1rem;"></i>
+    <span style="color:#fff;font-weight:700;font-size:.92rem;flex:1;letter-spacing:.3px">CTC Voice Assistant</span>
+    <button onclick="toggleVoicePanel()" style="background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:50%;width:26px;height:26px;cursor:pointer;font-size:.8rem;line-height:1;"><i class="fa fa-times"></i></button>
   </div>
-  <div style="padding:14px 16px;">
-    <!-- Status bar -->
-    <div id="vaStatus" style="font-size:.78rem;color:#7c3aed;font-weight:600;margin-bottom:8px;min-height:18px;"></div>
-    <!-- Transcript -->
-    <div id="vaTranscript" style="background:#f5f3ff;border-radius:10px;padding:10px 12px;font-size:.83rem;color:#3730a3;min-height:36px;margin-bottom:10px;font-style:italic;"></div>
+
+  <!-- Wave animation area -->
+  <div id="vaWaveArea" style="background:#f5f3ff;padding:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:72px;gap:6px;">
+    <div id="vaListenWave" style="display:none;gap:2px;align-items:flex-end;height:28px;">
+      <span class="va-bar"></span><span class="va-bar"></span><span class="va-bar"></span><span class="va-bar"></span><span class="va-bar"></span>
+    </div>
+    <div id="vaSpeakWave" style="display:none;gap:2px;align-items:flex-end;height:28px;">
+      <span class="va-bar"></span><span class="va-bar"></span><span class="va-bar"></span><span class="va-bar"></span><span class="va-bar"></span>
+    </div>
+    <div id="vaStatusIcon" style="font-size:1.6rem;">🎙️</div>
+    <div id="vaStatus" style="font-size:.8rem;color:#7c3aed;font-weight:600;text-align:center;"></div>
+  </div>
+
+  <div style="padding:12px 16px 14px;">
+    <!-- What you said -->
+    <div id="vaTranscript" style="display:none;background:#ede9fe;border-radius:10px;padding:9px 12px;font-size:.82rem;color:#4c1d95;margin-bottom:8px;font-style:italic;border-left:3px solid #7c3aed;"></div>
     <!-- Response -->
-    <div id="vaResponse" style="background:#f0fdf4;border-radius:10px;padding:10px 12px;font-size:.83rem;color:#166534;min-height:36px;margin-bottom:12px;"></div>
-    <!-- Mic button -->
-    <button id="vaMicBtn" onclick="startVoice()" style="width:100%;padding:10px;background:linear-gradient(135deg,#7c3aed,#4f46e5);color:#fff;border:none;border-radius:10px;font-weight:600;font-size:.88rem;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
-      <i class="fa fa-microphone" id="vaMicIcon"></i>
-      <span id="vaMicLabel">Tap to Speak</span>
-    </button>
+    <div id="vaResponse" style="display:none;background:#f0fdf4;border-radius:10px;padding:9px 12px;font-size:.82rem;color:#166534;margin-bottom:12px;border-left:3px solid #16a34a;line-height:1.5;"></div>
+
+    <!-- Big Mic Button -->
+    <div style="display:flex;justify-content:center;margin-bottom:10px;">
+      <button id="vaMicBtn" onclick="startVoice()"
+        style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#4f46e5);color:#fff;border:none;font-size:1.5rem;cursor:pointer;box-shadow:0 4px 20px rgba(124,58,237,.4);transition:all .3s;display:flex;align-items:center;justify-content:center;">
+        <i class="fa fa-microphone" id="vaMicIcon"></i>
+      </button>
+    </div>
+    <div id="vaMicLabel" style="text-align:center;font-size:.78rem;color:#7c3aed;font-weight:600;margin-bottom:10px;">Tap mic to speak</div>
+
     <!-- Text fallback -->
-    <div style="margin-top:8px;display:flex;gap:6px;">
-      <input id="vaTextInput" type="text" placeholder="Or type your question here..." autocomplete="off"
-        style="flex:1;padding:8px 10px;border:1.5px solid #c4b5fd;border-radius:8px;font-size:.8rem;outline:none;"
+    <div style="display:flex;gap:6px;margin-bottom:10px;">
+      <input id="vaTextInput" type="text" placeholder="Or type here and press Enter..." autocomplete="off"
+        style="flex:1;padding:8px 11px;border:1.5px solid #c4b5fd;border-radius:9px;font-size:.8rem;outline:none;transition:border .2s;"
+        onfocus="this.style.borderColor='#7c3aed'" onblur="this.style.borderColor='#c4b5fd'"
         onkeydown="if(event.key==='Enter'){sendVaText();}">
-      <button onclick="sendVaText()" style="padding:8px 12px;background:#7c3aed;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:.85rem;">
+      <button onclick="sendVaText()" title="Send" style="padding:8px 12px;background:#7c3aed;color:#fff;border:none;border-radius:9px;cursor:pointer;">
         <i class="fa fa-paper-plane"></i>
       </button>
     </div>
-    <div style="margin-top:10px;border-top:1px solid #e9e7ff;padding-top:8px;">
-      <div style="font-size:.72rem;color:#9ca3af;font-weight:600;margin-bottom:4px;">TRY SAYING / TYPING:</div>
-      <div style="font-size:.72rem;color:#6b7280;line-height:1.6;">
-        "Today highest sale"<br>
-        "Total sales today"<br>
-        "Show bill of Akash Sharma"<br>
-        "How many invoices today"<br>
-        "Pending invoices"
+
+    <!-- Examples -->
+    <div style="border-top:1px solid #ede9fe;padding-top:9px;">
+      <div style="font-size:.7rem;color:#a78bfa;font-weight:700;margin-bottom:5px;letter-spacing:.5px;">TRY SAYING:</div>
+      <div style="display:flex;flex-wrap:wrap;gap:5px;">
+        <span onclick="quickAsk(this)" style="font-size:.7rem;background:#f5f3ff;color:#6d28d9;border:1px solid #ddd6fe;border-radius:20px;padding:3px 9px;cursor:pointer;">"Today highest sale"</span>
+        <span onclick="quickAsk(this)" style="font-size:.7rem;background:#f5f3ff;color:#6d28d9;border:1px solid #ddd6fe;border-radius:20px;padding:3px 9px;cursor:pointer;">"Total sales today"</span>
+        <span onclick="quickAsk(this)" style="font-size:.7rem;background:#f5f3ff;color:#6d28d9;border:1px solid #ddd6fe;border-radius:20px;padding:3px 9px;cursor:pointer;">"Pending invoices"</span>
+        <span onclick="quickAsk(this)" style="font-size:.7rem;background:#f5f3ff;color:#6d28d9;border:1px solid #ddd6fe;border-radius:20px;padding:3px 9px;cursor:pointer;">"Sales this month"</span>
       </div>
     </div>
   </div>
@@ -539,89 +572,208 @@ body.sidebar-collapsed #main{margin-left:var(--sidebar-collapsed)}
 var _vaOpen = false;
 var _vaRecognition = null;
 var _vaListening = false;
+var _vaGotResult = false;
+var _vaSpeaking = false;
+var _vaVoices = [];
+
+// Load voices (Chrome loads them async)
+function loadVaVoices(){
+  _vaVoices = window.speechSynthesis.getVoices();
+}
+loadVaVoices();
+if(window.speechSynthesis) window.speechSynthesis.onvoiceschanged = loadVaVoices;
+
+function getBestVoice(){
+  // Priority: Google UK English Female > Microsoft Heera (Indian) > any en-IN > any en-GB > any en
+  var pref = [
+    v => v.name.includes('Google UK English Female'),
+    v => v.name.includes('Microsoft Heera'),
+    v => v.name.includes('Google US English'),
+    v => v.lang === 'en-IN',
+    v => v.lang === 'en-GB',
+    v => v.lang.startsWith('en'),
+  ];
+  for(var i=0;i<pref.length;i++){
+    var found = _vaVoices.find(pref[i]);
+    if(found) return found;
+  }
+  return null;
+}
 
 function toggleVoicePanel(){
   _vaOpen = !_vaOpen;
-  document.getElementById('voicePanel').style.display = _vaOpen ? 'block' : 'none';
-  if(_vaOpen){ document.getElementById('vaStatus').innerText='Ready. Tap mic to speak.'; }
+  var panel = document.getElementById('voicePanel');
+  panel.style.display = _vaOpen ? 'block' : 'none';
+  if(_vaOpen){
+    setVaState('idle');
+    document.getElementById('vaTextInput').value = '';
+  } else {
+    stopVoice(); window.speechSynthesis.cancel();
+  }
+}
+
+function setVaState(state, msg){
+  var icon = document.getElementById('vaStatusIcon');
+  var status = document.getElementById('vaStatus');
+  var listenWave = document.getElementById('vaListenWave');
+  var speakWave = document.getElementById('vaSpeakWave');
+  var micBtn = document.getElementById('vaMicBtn');
+  var micIcon = document.getElementById('vaMicIcon');
+  var micLabel = document.getElementById('vaMicLabel');
+  var voiceBtn = document.getElementById('voiceBtn');
+
+  listenWave.style.display = 'none';
+  speakWave.style.display = 'none';
+  icon.style.display = 'block';
+  voiceBtn.classList.remove('va-active');
+
+  if(state === 'idle'){
+    icon.innerText = '🎙️'; status.innerText = msg || 'Tap mic to start';
+    micBtn.style.background = 'linear-gradient(135deg,#7c3aed,#4f46e5)';
+    micBtn.style.boxShadow = '0 4px 20px rgba(124,58,237,.4)';
+    micIcon.className = 'fa fa-microphone'; micLabel.innerText = 'Tap mic to speak';
+  } else if(state === 'listening'){
+    icon.style.display = 'none';
+    listenWave.style.display = 'flex';
+    status.innerText = 'Listening... speak now';
+    micBtn.style.background = 'linear-gradient(135deg,#dc2626,#b91c1c)';
+    micBtn.style.boxShadow = '0 0 0 8px rgba(220,38,38,.2)';
+    micIcon.className = 'fa fa-stop'; micLabel.innerText = 'Tap to stop';
+    voiceBtn.classList.add('va-active');
+  } else if(state === 'processing'){
+    icon.innerText = '⏳'; status.innerText = msg || 'Let me check that...';
+    micBtn.style.background = 'linear-gradient(135deg,#0891b2,#0e7490)';
+    micIcon.className = 'fa fa-spinner fa-spin'; micLabel.innerText = 'Processing...';
+  } else if(state === 'speaking'){
+    icon.style.display = 'none';
+    speakWave.style.display = 'flex';
+    status.innerText = msg || 'Speaking...';
+    micBtn.style.background = 'linear-gradient(135deg,#059669,#047857)';
+    micBtn.style.boxShadow = '0 4px 20px rgba(5,150,105,.4)';
+    micIcon.className = 'fa fa-volume-high'; micLabel.innerText = 'Speaking...';
+  } else if(state === 'error'){
+    icon.innerText = '⚠️'; status.innerText = msg || 'Error occurred';
+    micBtn.style.background = 'linear-gradient(135deg,#7c3aed,#4f46e5)';
+    micBtn.style.boxShadow = '0 4px 20px rgba(124,58,237,.4)';
+    micIcon.className = 'fa fa-microphone'; micLabel.innerText = 'Try again';
+  }
 }
 
 function startVoice(){
   if(_vaListening){ stopVoice(); return; }
-  var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if(!SpeechRecognition){
-    alert('Voice recognition not supported in this browser. Please use Chrome or Edge.');
+  window.speechSynthesis.cancel(); // stop any ongoing speech
+
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!SR){
+    setVaState('error','Not supported. Use Chrome or Edge.');
     return;
   }
-  _vaRecognition = new SpeechRecognition();
-  _vaRecognition.lang = 'en-IN';
-  _vaRecognition.interimResults = false;
-  _vaRecognition.maxAlternatives = 1;
 
-  _vaListening = true;
-  document.getElementById('vaMicBtn').style.background = 'linear-gradient(135deg,#dc2626,#b91c1c)';
-  document.getElementById('vaMicIcon').className = 'fa fa-circle-dot fa-beat';
-  document.getElementById('vaMicLabel').innerText = 'Listening... (tap to stop)';
-  document.getElementById('vaStatus').innerText = 'Listening...';
-  document.getElementById('vaTranscript').innerText = '';
-  document.getElementById('vaResponse').innerText = '';
-  document.getElementById('voiceBtnIcon').className = 'fa fa-circle-dot fa-beat';
+  _vaRecognition = new SR();
+  _vaRecognition.lang = 'en-IN';
+  _vaRecognition.interimResults = true;   // show words as user speaks
+  _vaRecognition.maxAlternatives = 3;
+  _vaRecognition.continuous = false;       // auto-stops after silence
+
+  _vaListening = true; _vaGotResult = false;
+  document.getElementById('vaTranscript').style.display = 'none';
+  document.getElementById('vaResponse').style.display = 'none';
+  setVaState('listening');
+
+  // Speak greeting when mic opens
+  speakQuiet('Yes, I am listening.');
 
   _vaRecognition.onresult = function(e){
-    var text = e.results[0][0].transcript;
-    document.getElementById('vaTranscript').innerText = '"' + text + '"';
-    document.getElementById('vaStatus').innerText = 'Processing...';
-    processVoiceQuery(text);
+    var interim = '', final = '';
+    for(var i=0;i<e.results.length;i++){
+      if(e.results[i].isFinal) final += e.results[i][0].transcript;
+      else interim += e.results[i][0].transcript;
+    }
+    var display = final || interim;
+    var el = document.getElementById('vaTranscript');
+    el.innerText = '"' + display + '"'; el.style.display = 'block';
+    if(final){ _vaGotResult = true; }
   };
+
+  _vaRecognition.onend = function(){
+    _vaListening = false;
+    var text = document.getElementById('vaTranscript').innerText.replace(/^"|"$/g,'').trim();
+    if(_vaGotResult && text){
+      setVaState('processing', 'Got it! Checking...');
+      processVoiceQuery(text);
+    } else if(!_vaGotResult){
+      setVaState('idle','No speech detected. Try again.');
+    }
+    document.getElementById('voiceBtn').classList.remove('va-active');
+  };
+
   _vaRecognition.onerror = function(e){
-    stopVoice();
-    var msg = {
-      'network': 'Network error — Google speech server unreachable. Please type your question below instead.',
-      'not-allowed': 'Microphone permission denied. Please allow mic access in browser settings.',
-      'no-speech': 'No speech detected. Please speak clearly and try again.',
-      'aborted': 'Listening stopped.',
-    }[e.error] || ('Error: ' + e.error + '. Try typing below.');
-    document.getElementById('vaStatus').innerText = msg;
-    document.getElementById('vaTextInput').focus();
+    _vaListening = false;
+    var msgs = {
+      'network':'Network error. Please type below.',
+      'not-allowed':'Mic permission denied. Allow mic in browser.',
+      'no-speech':'Nothing heard. Please speak louder.',
+      'aborted':'',
+    };
+    var msg = msgs[e.error] || ('Error: ' + e.error);
+    if(e.error !== 'aborted') setVaState('error', msg);
+    else setVaState('idle');
+    if(e.error === 'network' || e.error === 'not-allowed')
+      document.getElementById('vaTextInput').focus();
   };
-  _vaRecognition.onend = function(){ stopVoice(); };
+
   _vaRecognition.start();
 }
 
 function stopVoice(){
   _vaListening = false;
-  if(_vaRecognition){ try{ _vaRecognition.stop(); }catch(e){} }
-  document.getElementById('vaMicBtn').style.background = 'linear-gradient(135deg,#7c3aed,#4f46e5)';
-  document.getElementById('vaMicIcon').className = 'fa fa-microphone';
-  document.getElementById('vaMicLabel').innerText = 'Tap to Speak';
-  document.getElementById('voiceBtnIcon').className = 'fa fa-microphone';
+  if(_vaRecognition){ try{ _vaRecognition.abort(); }catch(e){} _vaRecognition = null; }
+  setVaState('idle');
 }
 
 function processVoiceQuery(text){
   fetch('/voice-assistant/?q=' + encodeURIComponent(text))
     .then(r => r.json())
     .then(data => {
-      document.getElementById('vaStatus').innerText = 'Done';
-      document.getElementById('vaResponse').innerText = data.speak || '';
-      speakResponse(data.speak);
-      if(data.action){
-        setTimeout(function(){ window.location.href = data.action; }, 2200);
-      }
+      var resp = document.getElementById('vaResponse');
+      resp.innerText = data.speak || '';
+      resp.style.display = 'block';
+      speakResponse(data.speak, data.action);
     })
-    .catch(function(){ document.getElementById('vaStatus').innerText = 'Server error. Try again.'; });
+    .catch(function(){
+      setVaState('error','Server error. Try again.');
+    });
 }
 
-function speakResponse(text){
-  if(!text) return;
-  var utter = new SpeechSynthesisUtterance(text);
-  utter.lang = 'en-IN';
-  utter.rate = 0.95;
-  utter.pitch = 1.0;
-  // Prefer an Indian English voice if available
-  var voices = window.speechSynthesis.getVoices();
-  var pref = voices.find(v => v.lang === 'en-IN') || voices.find(v => v.lang.startsWith('en')) || null;
-  if(pref) utter.voice = pref;
+function speakResponse(text, action){
+  if(!text){ setVaState('idle'); return; }
+  setVaState('speaking');
   window.speechSynthesis.cancel();
+  var utter = new SpeechSynthesisUtterance(text);
+  var voice = getBestVoice();
+  if(voice) utter.voice = voice;
+  utter.lang = voice ? voice.lang : 'en-IN';
+  utter.rate = 1.0;
+  utter.pitch = 1.05;
+  utter.volume = 1.0;
+  utter.onend = function(){
+    setVaState('idle','Done! Tap mic for next question.');
+    if(action){ setTimeout(function(){ window.location.href = action; }, 600); }
+  };
+  utter.onerror = function(){
+    setVaState('idle');
+    if(action){ setTimeout(function(){ window.location.href = action; }, 400); }
+  };
+  window.speechSynthesis.speak(utter);
+}
+
+// Quiet greeting (no wave animation)
+function speakQuiet(text){
+  if(!_vaVoices.length) _vaVoices = window.speechSynthesis.getVoices();
+  var utter = new SpeechSynthesisUtterance(text);
+  var voice = getBestVoice();
+  if(voice) utter.voice = voice;
+  utter.rate = 1.1; utter.pitch = 1.1; utter.volume = 0.7;
   window.speechSynthesis.speak(utter);
 }
 
@@ -629,18 +781,25 @@ function sendVaText(){
   var inp = document.getElementById('vaTextInput');
   var text = inp.value.trim();
   if(!text) return;
-  document.getElementById('vaTranscript').innerText = '"' + text + '"';
-  document.getElementById('vaStatus').innerText = 'Processing...';
-  document.getElementById('vaResponse').innerText = '';
+  var el = document.getElementById('vaTranscript');
+  el.innerText = '"' + text + '"'; el.style.display = 'block';
+  document.getElementById('vaResponse').style.display = 'none';
   inp.value = '';
+  setVaState('processing','Checking...');
   processVoiceQuery(text);
 }
 
-// Keyboard shortcut: Alt+V to open/start voice
+function quickAsk(el){
+  var text = el.innerText.replace(/^"|"$/g,'').trim();
+  document.getElementById('vaTextInput').value = text;
+  sendVaText();
+}
+
+// Alt+V shortcut
 document.addEventListener('keydown', function(e){
   if(e.altKey && (e.key==='v'||e.key==='V')){
-    if(!_vaOpen){ toggleVoicePanel(); }
-    setTimeout(startVoice, 200);
+    if(!_vaOpen) toggleVoicePanel();
+    setTimeout(startVoice, 300);
   }
 });
 </script>
