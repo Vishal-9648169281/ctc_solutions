@@ -83,6 +83,9 @@ urlpatterns = [
     path('masters/quick-add/vendor/', views.quick_add_vendor, name='quick_add_vendor'),
     path('masters/quick-add/product/', views.quick_add_product, name='quick_add_product'),
 
+    # Voice Assistant
+    path('voice-assistant/', views.voice_assistant, name='voice_assistant'),
+
     # Party Master
     path('masters/party/', views.party_list, name='party_list'),
     path('masters/party/add/', views.party_add, name='party_add'),

@@ -782,6 +782,115 @@ def rate_modification(request):
     return render(request, 'masters/rate_modification.html', {'products': products})
 
 
+# ─── VOICE ASSISTANT ────────────────────────────────────
+@login_required
+def voice_assistant(request):
+    import datetime
+    from django.db.models import Sum, Max, Q
+    from sales.models import SalesInvoice
+    from difflib import get_close_matches
+
+    query = request.GET.get('q', '').strip().lower()
+    if not query:
+        return JsonResponse({'speak': 'Yes, I am listening. Please ask your question.', 'action': None})
+
+    today = datetime.date.today()
+
+    # ── today's highest sale ──────────────────────────────
+    if any(k in query for k in ['highest sale', 'maximum sale', 'biggest sale', 'top sale', 'sabse bada', 'highest invoice']):
+        scope = 'today' if 'today' in query else ('month' if 'month' in query else 'today')
+        if scope == 'today':
+            inv = SalesInvoice.objects.filter(invoice_date=today).order_by('-total_amount').first()
+            label = 'today'
+        else:
+            inv = SalesInvoice.objects.filter(invoice_date__month=today.month, invoice_date__year=today.year).order_by('-total_amount').first()
+            label = 'this month'
+        if inv:
+            return JsonResponse({
+                'speak': f"Highest sale {label} is invoice {inv.invoice_number} of {inv.customer.name} for rupees {int(inv.total_amount)}.",
+                'action': f'/sales/invoices/{inv.pk}/',
+                'data': {'invoice': inv.invoice_number, 'customer': inv.customer.name, 'amount': str(inv.total_amount), 'date': str(inv.invoice_date)},
+            })
+        return JsonResponse({'speak': f'No sales found for {label}.', 'action': None})
+
+    # ── total sales today / this month ───────────────────
+    if any(k in query for k in ['total sale', 'kitni sale', 'sales today', 'aaj ki sale', 'total invoice']):
+        if 'month' in query:
+            total = SalesInvoice.objects.filter(invoice_date__month=today.month, invoice_date__year=today.year).aggregate(t=Sum('total_amount'))['t'] or 0
+            count = SalesInvoice.objects.filter(invoice_date__month=today.month, invoice_date__year=today.year).count()
+            return JsonResponse({'speak': f'This month total sales are rupees {int(total)} across {count} invoices.', 'action': '/sales/invoices/'})
+        else:
+            total = SalesInvoice.objects.filter(invoice_date=today).aggregate(t=Sum('total_amount'))['t'] or 0
+            count = SalesInvoice.objects.filter(invoice_date=today).count()
+            return JsonResponse({'speak': f"Today's total sales are rupees {int(total)} across {count} invoices.", 'action': '/sales/invoices/?from_date=' + str(today) + '&to_date=' + str(today)})
+
+    # ── pending invoices ──────────────────────────────────
+    if any(k in query for k in ['pending', 'unpaid', 'baaki', 'due']):
+        count = SalesInvoice.objects.filter(status='pending').count()
+        total = SalesInvoice.objects.filter(status='pending').aggregate(t=Sum('total_amount'))['t'] or 0
+        return JsonResponse({'speak': f'There are {count} pending invoices totaling rupees {int(total)}.', 'action': '/sales/invoices/'})
+
+    # ── how many invoices today ───────────────────────────
+    if any(k in query for k in ['how many invoice', 'kitne invoice', 'count invoice', 'invoice today', 'aaj ke invoice']):
+        count = SalesInvoice.objects.filter(invoice_date=today).count()
+        return JsonResponse({'speak': f"Today {count} invoice{'s' if count != 1 else ''} ha{'ve' if count != 1 else 's'} been created.", 'action': '/sales/invoices/?from_date=' + str(today) + '&to_date=' + str(today)})
+
+    # ── show bill / invoice of [customer] ─────────────────
+    for kw in ['show bill of', 'show invoice of', 'bill of', 'invoice of', 'find bill', 'search bill', 'bill for', 'invoice for', 'ka bill', 'ki invoice']:
+        if kw in query:
+            cname = query.split(kw, 1)[-1].strip()
+            if cname:
+                from masters.models import Customer
+                all_names = list(Customer.objects.filter(is_active=True).values_list('name', flat=True))
+                matches = get_close_matches(cname.upper(), [n.upper() for n in all_names], n=1, cutoff=0.4)
+                if matches:
+                    matched_name = all_names[[n.upper() for n in all_names].index(matches[0])]
+                    cust = Customer.objects.filter(name=matched_name).first()
+                    inv = SalesInvoice.objects.filter(customer=cust).order_by('-invoice_date').first()
+                    if inv:
+                        return JsonResponse({
+                            'speak': f"Last invoice of {cust.name} is {inv.invoice_number} dated {inv.invoice_date} for rupees {int(inv.total_amount)}.",
+                            'action': f'/sales/invoices/{inv.pk}/',
+                            'data': {'invoice': inv.invoice_number, 'customer': cust.name, 'amount': str(inv.total_amount), 'date': str(inv.invoice_date)},
+                        })
+                    return JsonResponse({'speak': f'No invoice found for {cust.name}.', 'action': None})
+                return JsonResponse({'speak': f'No customer found matching {cname}. Please check the name.', 'action': None})
+
+    # ── customer balance ──────────────────────────────────
+    if any(k in query for k in ['balance of', 'outstanding', 'kitna baaki', 'balance for']):
+        for kw in ['balance of', 'balance for', 'outstanding of']:
+            if kw in query:
+                cname = query.split(kw, 1)[-1].strip()
+                from masters.models import Customer
+                all_names = list(Customer.objects.filter(is_active=True).values_list('name', flat=True))
+                matches = get_close_matches(cname.upper(), [n.upper() for n in all_names], n=1, cutoff=0.4)
+                if matches:
+                    matched_name = all_names[[n.upper() for n in all_names].index(matches[0])]
+                    cust = Customer.objects.filter(name=matched_name).first()
+                    total_due = SalesInvoice.objects.filter(customer=cust).exclude(status='paid').aggregate(t=Sum('total_amount'))['t'] or 0
+                    paid = SalesInvoice.objects.filter(customer=cust).aggregate(t=Sum('paid_amount'))['t'] or 0
+                    balance = total_due - paid
+                    return JsonResponse({'speak': f"{cust.name} has outstanding balance of rupees {int(balance)}.", 'action': f'/masters/customers/'})
+                return JsonResponse({'speak': f'Customer {cname} not found.', 'action': None})
+
+    # ── go to page ────────────────────────────────────────
+    nav_map = [
+        (['dashboard', 'home', 'ghar'], '/dashboard/', 'Opening dashboard.'),
+        (['invoice list', 'all invoice', 'sales list', 'invoice dekho'], '/sales/invoices/', 'Opening invoice list.'),
+        (['new invoice', 'add invoice', 'create invoice', 'naya bill'], '/sales/invoices/add/?type=gst', 'Opening new invoice form.'),
+        (['customer', 'khata'], '/masters/customers/', 'Opening customer list.'),
+        (['product', 'item list'], '/masters/products/', 'Opening product list.'),
+        (['purchase', 'bill list'], '/purchase/bills/', 'Opening purchase bills.'),
+        (['payment', 'receive payment'], '/payments/receive/', 'Opening receive payment.'),
+        (['user', 'staff'], '/users/', 'Opening user management.'),
+    ]
+    for keywords, url, msg in nav_map:
+        if any(k in query for k in keywords):
+            return JsonResponse({'speak': msg, 'action': url})
+
+    return JsonResponse({'speak': f"Sorry, I did not understand. You said: {query}. Try asking 'today highest sale', 'total sales today', or 'show bill of customer name'.", 'action': None})
+
+
 def generate_alpha_code(model_class, name):
     """Generate code like V001, V002 based on first letter of name"""
     if not name:

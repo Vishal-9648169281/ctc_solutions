@@ -488,6 +488,136 @@ body.sidebar-collapsed #main{margin-left:var(--sidebar-collapsed)}
   <i class="fa fa-arrow-left"></i>
 </button>
 
+<!-- Voice Assistant FAB -->
+<button id="voiceBtn" onclick="toggleVoicePanel()" title="Voice Assistant"
+  style="position:fixed;bottom:82px;right:24px;z-index:1040;width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#4f46e5);color:#fff;border:none;box-shadow:0 4px 16px rgba(124,58,237,.4);font-size:1.1rem;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s">
+  <i class="fa fa-microphone" id="voiceBtnIcon"></i>
+</button>
+
+<!-- Voice Assistant Panel -->
+<div id="voicePanel" style="display:none;position:fixed;bottom:140px;right:18px;z-index:1050;width:320px;background:#fff;border-radius:18px;box-shadow:0 8px 40px rgba(0,0,0,.18);overflow:hidden;font-family:'Inter',sans-serif;">
+  <div style="background:linear-gradient(135deg,#7c3aed,#4f46e5);padding:12px 16px;display:flex;align-items:center;gap:10px;">
+    <i class="fa fa-microphone" style="color:#fff;font-size:1rem;"></i>
+    <span style="color:#fff;font-weight:600;font-size:.9rem;flex:1">Voice Assistant</span>
+    <button onclick="toggleVoicePanel()" style="background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:50%;width:26px;height:26px;cursor:pointer;font-size:.8rem;"><i class="fa fa-times"></i></button>
+  </div>
+  <div style="padding:14px 16px;">
+    <!-- Status bar -->
+    <div id="vaStatus" style="font-size:.78rem;color:#7c3aed;font-weight:600;margin-bottom:8px;min-height:18px;"></div>
+    <!-- Transcript -->
+    <div id="vaTranscript" style="background:#f5f3ff;border-radius:10px;padding:10px 12px;font-size:.83rem;color:#3730a3;min-height:36px;margin-bottom:10px;font-style:italic;"></div>
+    <!-- Response -->
+    <div id="vaResponse" style="background:#f0fdf4;border-radius:10px;padding:10px 12px;font-size:.83rem;color:#166534;min-height:36px;margin-bottom:12px;"></div>
+    <!-- Mic button -->
+    <button id="vaMicBtn" onclick="startVoice()" style="width:100%;padding:10px;background:linear-gradient(135deg,#7c3aed,#4f46e5);color:#fff;border:none;border-radius:10px;font-weight:600;font-size:.88rem;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
+      <i class="fa fa-microphone" id="vaMicIcon"></i>
+      <span id="vaMicLabel">Tap to Speak</span>
+    </button>
+    <div style="margin-top:10px;border-top:1px solid #e9e7ff;padding-top:8px;">
+      <div style="font-size:.72rem;color:#9ca3af;font-weight:600;margin-bottom:4px;">TRY SAYING:</div>
+      <div style="font-size:.72rem;color:#6b7280;line-height:1.6;">
+        "Today highest sale"<br>
+        "Total sales today"<br>
+        "Show bill of Akash Sharma"<br>
+        "How many invoices today"<br>
+        "Pending invoices"
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+var _vaOpen = false;
+var _vaRecognition = null;
+var _vaListening = false;
+
+function toggleVoicePanel(){
+  _vaOpen = !_vaOpen;
+  document.getElementById('voicePanel').style.display = _vaOpen ? 'block' : 'none';
+  if(_vaOpen){ document.getElementById('vaStatus').innerText='Ready. Tap mic to speak.'; }
+}
+
+function startVoice(){
+  if(_vaListening){ stopVoice(); return; }
+  var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!SpeechRecognition){
+    alert('Voice recognition not supported in this browser. Please use Chrome or Edge.');
+    return;
+  }
+  _vaRecognition = new SpeechRecognition();
+  _vaRecognition.lang = 'en-IN';
+  _vaRecognition.interimResults = false;
+  _vaRecognition.maxAlternatives = 1;
+
+  _vaListening = true;
+  document.getElementById('vaMicBtn').style.background = 'linear-gradient(135deg,#dc2626,#b91c1c)';
+  document.getElementById('vaMicIcon').className = 'fa fa-circle-dot fa-beat';
+  document.getElementById('vaMicLabel').innerText = 'Listening... (tap to stop)';
+  document.getElementById('vaStatus').innerText = 'Listening...';
+  document.getElementById('vaTranscript').innerText = '';
+  document.getElementById('vaResponse').innerText = '';
+  document.getElementById('voiceBtnIcon').className = 'fa fa-circle-dot fa-beat';
+
+  _vaRecognition.onresult = function(e){
+    var text = e.results[0][0].transcript;
+    document.getElementById('vaTranscript').innerText = '"' + text + '"';
+    document.getElementById('vaStatus').innerText = 'Processing...';
+    processVoiceQuery(text);
+  };
+  _vaRecognition.onerror = function(e){
+    stopVoice();
+    document.getElementById('vaStatus').innerText = 'Error: ' + e.error + '. Try again.';
+  };
+  _vaRecognition.onend = function(){ stopVoice(); };
+  _vaRecognition.start();
+}
+
+function stopVoice(){
+  _vaListening = false;
+  if(_vaRecognition){ try{ _vaRecognition.stop(); }catch(e){} }
+  document.getElementById('vaMicBtn').style.background = 'linear-gradient(135deg,#7c3aed,#4f46e5)';
+  document.getElementById('vaMicIcon').className = 'fa fa-microphone';
+  document.getElementById('vaMicLabel').innerText = 'Tap to Speak';
+  document.getElementById('voiceBtnIcon').className = 'fa fa-microphone';
+}
+
+function processVoiceQuery(text){
+  fetch('/voice-assistant/?q=' + encodeURIComponent(text))
+    .then(r => r.json())
+    .then(data => {
+      document.getElementById('vaStatus').innerText = 'Done';
+      document.getElementById('vaResponse').innerText = data.speak || '';
+      speakResponse(data.speak);
+      if(data.action){
+        setTimeout(function(){ window.location.href = data.action; }, 2200);
+      }
+    })
+    .catch(function(){ document.getElementById('vaStatus').innerText = 'Server error. Try again.'; });
+}
+
+function speakResponse(text){
+  if(!text) return;
+  var utter = new SpeechSynthesisUtterance(text);
+  utter.lang = 'en-IN';
+  utter.rate = 0.95;
+  utter.pitch = 1.0;
+  // Prefer an Indian English voice if available
+  var voices = window.speechSynthesis.getVoices();
+  var pref = voices.find(v => v.lang === 'en-IN') || voices.find(v => v.lang.startsWith('en')) || null;
+  if(pref) utter.voice = pref;
+  window.speechSynthesis.cancel();
+  window.speechSynthesis.speak(utter);
+}
+
+// Keyboard shortcut: Alt+V to open/start voice
+document.addEventListener('keydown', function(e){
+  if(e.altKey && (e.key==='v'||e.key==='V')){
+    if(!_vaOpen){ toggleVoicePanel(); }
+    setTimeout(startVoice, 200);
+  }
+});
+</script>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
