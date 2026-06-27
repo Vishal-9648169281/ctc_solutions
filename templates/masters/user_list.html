@@ -1,87 +1,90 @@
-{% extends 'base.html' %}
+﻿{% extends 'base.html' %}
 {% load static %}
-{% block title %}User Master{% endblock %}
+{% block title %}User Management{% endblock %}
 {% block content %}
 <div class="page-header">
     <div>
-        <h5><i class="fa fa-users-cog me-2"></i>User Master</h5>
+        <h5><i class="fa fa-users-cog me-2"></i>User Management</h5>
         <div class="page-breadcrumb">Masters &rsaquo; Users</div>
     </div>
-    <div class="d-flex gap-2">
-        <button class="btn-ctc" onclick="openM()"><i class="fa fa-plus me-1"></i>Add</button>
-        <button class="btn-ctc-outline" onclick="delRec()"><i class="fa fa-trash me-1"></i>Delete</button>
+    <a href="/users/add/" class="btn-ctc"><i class="fa fa-plus me-1"></i>Add User</a>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-md-4">
+        <div class="ctc-card text-center py-3">
+            <div style="font-size:2rem;font-weight:700;color:#1a237e;">{{ active_count }}</div>
+            <div class="text-muted small">Active Users</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="ctc-card text-center py-3">
+            <div style="font-size:2rem;font-weight:700;color:#c62828;">{{ blocked_count }}</div>
+            <div class="text-muted small">Blocked Users</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="ctc-card text-center py-3">
+            <div style="font-size:2rem;font-weight:700;color:#2e7d32;">{{ admin_count }}</div>
+            <div class="text-muted small">Admins / Superusers</div>
+        </div>
     </div>
 </div>
+
 <div class="ctc-card">
     <div class="ctc-card-header"><span><i class="fa fa-list me-2"></i>All Users</span></div>
     <div class="ctc-card-body p-0">
-        <table class="table table-hover mb-0 ctc-datatable" id="tb">
-            <thead><tr><th>User Name</th><th>Role</th></tr></thead>
+        <table class="table table-hover mb-0 ctc-datatable">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Username</th>
+                    <th>Full Name</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
             <tbody>
             {% for u in users %}
-            <tr style="cursor:pointer" onclick="selRow(this,'{{ u.pk }}','{{ u.username|escapejs }}')">
-                <td>{{ u.username|upper }}</td>
-                <td>{% if u.profile %}{{ u.profile.role|upper }}{% else %}ADMIN{% endif %}</td>
-            </tr>{% endfor %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td><strong>{{ u.username|upper }}</strong></td>
+                <td>{{ u.get_full_name|default:"-" }}</td>
+                <td>
+                    {% if u.is_superuser %}
+                        <span class="badge-primary">SUPERUSER</span>
+                    {% elif u.profile %}
+                        {% if u.profile.role == 'admin' %}<span class="badge-primary">ADMIN</span>
+                        {% elif u.profile.role == 'owner' %}<span style="background:#6a1b9a;color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;">OWNER</span>
+                        {% elif u.profile.role == 'accounts' %}<span class="badge-warning">ACCOUNTS</span>
+                        {% elif u.profile.role == 'manager' %}<span class="badge-success">MANAGER</span>
+                        {% else %}<span class="badge-danger">SALES</span>{% endif %}
+                    {% else %}
+                        <span class="badge-primary">ADMIN</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if u.is_active %}<span class="badge-success">Active</span>
+                    {% else %}<span class="badge-danger">Blocked</span>{% endif %}
+                </td>
+                <td>
+                    <a href="/users/{{ u.pk }}/edit/" class="btn-sm-icon btn-view" title="Edit"><i class="fa fa-pencil"></i></a>
+                    {% if not u.is_superuser %}
+                        {% if u.is_active %}
+                            <a href="/users/{{ u.pk }}/block/" class="btn-sm-icon btn-delete" title="Block User" onclick="return confirm('Block user {{ u.username }}?')"><i class="fa fa-ban"></i></a>
+                        {% else %}
+                            <a href="/users/{{ u.pk }}/unblock/" class="btn-sm-icon btn-print" title="Unblock User"><i class="fa fa-check-circle"></i></a>
+                        {% endif %}
+                        <a href="/users/{{ u.pk }}/delete/" class="btn-sm-icon btn-delete" title="Delete" onclick="return confirm('Permanently delete {{ u.username }}?')"><i class="fa fa-trash"></i></a>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="text-center text-muted py-4"><i class="fa fa-users fa-2x d-block mb-2"></i>No users found</td></tr>
+            {% endfor %}
             </tbody>
         </table>
     </div>
 </div>
-
-<!-- ADD MODAL -->
-<div class="modal fade" id="userModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header" style="background:linear-gradient(135deg,#1a237e,#1565c0);color:white">
-                <h5 class="modal-title">Add User</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <form method="post" id="uF" action="{% url 'user_add' %}">
-                {% csrf_token %}
-                <input type="hidden" name="pk" id="f_pk">
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold small">User Name</label>
-                        <input type="text" name="username" id="f_un" class="form-control" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold small">Password</label>
-                        <input type="password" name="password" id="f_pw" class="form-control" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold small">Confirm Password</label>
-                        <input type="password" name="confirm_password" id="f_cp" class="form-control" required>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="submit" class="btn-ctc">Confirm</button>
-                    <button type="button" class="btn-ctc-outline" data-bs-dismiss="modal">Cancel</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-{% endblock %}
-{% block extra_js %}
-<script>
-let sP=null,sU='';
-const userModal = new bootstrap.Modal(document.getElementById('userModal'));
-function selRow(tr,pk,uname){
-    document.querySelectorAll('#tb tbody tr').forEach(r=>r.classList.remove('table-active'));
-    tr.classList.add('table-active');sP=pk;sU=uname;
-}
-function openM(){
-    document.getElementById('f_pk').value='';
-    ['f_un','f_pw','f_cp'].forEach(id=>document.getElementById(id).value='');
-    userModal.show();
-}
-function delRec(){
-    if(!sP){alert('Select a user!');return;}
-    if(confirm('Delete: '+sU+'?')){
-        const f=document.createElement('form');f.method='post';
-        f.action="{% url 'user_delete' 0 %}".replace('/0/','/'+sP+'/');
-        f.innerHTML='{% csrf_token %}';document.body.appendChild(f);f.submit();
-    }
-}
-</script>
 {% endblock %}

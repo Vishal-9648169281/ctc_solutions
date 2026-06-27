@@ -23,9 +23,10 @@
                 <div class="col-md-6">
                     <label class="form-label-sm">Role <span class="text-danger">*</span></label>
                     <select name="role" class="form-select form-select-sm" required>
-                        <option value="sales" {% if profile.role == 'sales' %}selected{% endif %}>Sales Staff</option>
-                        <option value="accountant" {% if profile.role == 'accountant' %}selected{% endif %}>Accountant</option>
-                        <option value="engineer" {% if profile.role == 'engineer' %}selected{% endif %}>Service Engineer</option>
+                        <option value="sales" {% if profile.role == 'sales' or not profile %}selected{% endif %}>Sales Staff</option>
+                        <option value="accounts" {% if profile.role == 'accounts' %}selected{% endif %}>Accounts</option>
+                        <option value="manager" {% if profile.role == 'manager' %}selected{% endif %}>Manager</option>
+                        <option value="owner" {% if profile.role == 'owner' %}selected{% endif %}>Owner</option>
                         <option value="admin" {% if profile.role == 'admin' %}selected{% endif %}>Admin</option>
                     </select>
                 </div>

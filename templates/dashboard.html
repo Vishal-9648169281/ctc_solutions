@@ -93,6 +93,7 @@
 </div>
 
 <!-- Sales Summary Row -->
+{% if user_role != 'sales' %}
 <div class="stats-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:18px">
   <div class="s-card" style="background:linear-gradient(135deg,#0c4a6e,#0284c7)">
     <div class="s-num" style="font-size:1.5rem">₹{{ total_sales_amt|floatformat:0 }}</div>
@@ -117,6 +118,7 @@
     </div>
   </div>
 </div>
+{% endif %}
 
 <!-- Charts Row -->
 <div class="charts-row">
@@ -186,7 +188,7 @@
             <th>Invoice No</th>
             <th>Customer</th>
             <th>Date</th>
-            <th class="text-end">Amount</th>
+            {% if user_role != 'sales' %}<th class="text-end">Amount</th>{% endif %}
             <th>Status</th>
           </tr>
         </thead>
@@ -196,7 +198,7 @@
             <td><strong style="color:var(--primary)">{{ inv.invoice_number }}</strong></td>
             <td>{{ inv.customer.name|truncatechars:20 }}</td>
             <td>{{ inv.invoice_date|date:"d-m-Y" }}</td>
-            <td class="text-end fw-600">&#8377;{{ inv.total_amount|floatformat:0 }}</td>
+            {% if user_role != 'sales' %}<td class="text-end fw-600">&#8377;{{ inv.total_amount|floatformat:0 }}</td>{% endif %}
             <td>
               {% if inv.status == 'paid' %}<span class="badge-success">Paid</span>
               {% elif inv.status == 'pending' %}<span class="badge-warning">Pending</span>

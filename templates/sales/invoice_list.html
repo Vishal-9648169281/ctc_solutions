@@ -45,7 +45,7 @@
     <div class="ctc-card-header"><span><i class="fa fa-list me-2"></i>Invoices ({{ invoices.count }} records)</span></div>
     <div class="ctc-card-body p-0">
         <table class="table table-hover mb-0 ctc-datatable">
-            <thead><tr><th>#</th><th>Invoice No</th><th>Type</th><th>Customer</th><th>Date</th><th>Total</th><th>Paid</th><th>Balance</th><th>Status</th><th>Actions</th></tr></thead>
+            <thead><tr><th>#</th><th>Invoice No</th><th>Type</th><th>Customer</th><th>Date</th>{% if user_role != 'sales' %}<th>Total</th><th>Paid</th><th>Balance</th>{% endif %}<th>Status</th><th>Actions</th></tr></thead>
             <tbody>
             {% for inv in invoices %}
             <tr>
@@ -58,9 +58,11 @@
                 </td>
                 <td>{{ inv.customer.name }}</td>
                 <td>{{ inv.invoice_date }}</td>
+                {% if user_role != 'sales' %}
                 <td>Rs.{{ inv.total_amount }}</td>
                 <td>Rs.{{ inv.paid_amount }}</td>
                 <td>Rs.{{ inv.balance_due }}</td>
+                {% endif %}
                 <td>
                     {% if inv.status == 'paid' %}<span class="badge-success">Paid</span>
                     {% elif inv.status == 'partial' %}<span class="badge-warning">Partial</span>
@@ -71,7 +73,7 @@
                     <button onclick="ctcPrint('/sales/invoices/{{ inv.pk }}/pdf/')" class="btn-sm-icon btn-print" title="Print / PDF"><i class="fa fa-print"></i></button>
                     <button onclick="sendWhatsApp({{ inv.pk }})" class="btn-sm-icon" style="background:#25D366;color:#fff;border:none;border-radius:4px;padding:3px 7px;cursor:pointer;" title="Send WhatsApp"><i class="fab fa-whatsapp"></i></button>
                     <button onclick="openEmailModal({{ inv.pk }}, '{{ inv.customer_email|default:inv.customer.email }}')" class="btn-sm-icon" style="background:#1a237e;color:#fff;border:none;border-radius:4px;padding:3px 7px;cursor:pointer;" title="Send Email"><i class="fa fa-envelope"></i></button>
-                    <a href="/sales/invoices/delete/{{ inv.pk }}/" class="btn-sm-icon btn-delete" title="Delete" onclick="return confirm('Delete?')"><i class="fa fa-trash"></i></a>
+                    {% if user_role != 'sales' %}<a href="/sales/invoices/delete/{{ inv.pk }}/" class="btn-sm-icon btn-delete" title="Delete" onclick="return confirm('Delete?')"><i class="fa fa-trash"></i></a>{% endif %}
                 </td>
             </tr>
             {% empty %}

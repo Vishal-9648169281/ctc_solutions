@@ -38,6 +38,7 @@ def invoice_list(request):
         invoices = invoices.filter(invoice_date__lte=to_date)
     if query:
         invoices = invoices.filter(customer__name__icontains=query)
+    from masters.middleware import get_user_role
     return render(request, "sales/invoice_list.html", {
         "invoices": invoices,
         "invoice_type": invoice_type,
@@ -45,6 +46,7 @@ def invoice_list(request):
         "from_date": from_date,
         "to_date": to_date,
         "query": query,
+        "user_role": get_user_role(request.user),
     })
 
 @login_required
@@ -173,8 +175,10 @@ def invoice_detail(request, pk):
     invoice = get_object_or_404(SalesInvoice, pk=pk)
     items = invoice.items.select_related("product").all()
     new_invoice = request.GET.get("new", False)
+    from masters.middleware import get_user_role
     return render(request, "sales/invoice_detail.html", {
         "invoice": invoice,
+        "user_role": get_user_role(request.user),
         "items": items,
         "new_invoice": new_invoice,
     })

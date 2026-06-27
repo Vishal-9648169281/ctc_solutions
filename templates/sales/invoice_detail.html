@@ -66,12 +66,14 @@
             {% endfor %}
             </tbody>
             <tfoot>
+                {% if user_role != 'sales' %}
                 <tr><td colspan="7" class="text-end"><strong>Subtotal</strong></td><td>Rs.{{ invoice.subtotal }}</td></tr>
                 <tr><td colspan="7" class="text-end"><strong>Tax</strong></td><td>Rs.{{ invoice.tax_amount }}</td></tr>
                 <tr><td colspan="7" class="text-end"><strong>Discount</strong></td><td>Rs.{{ invoice.discount }}</td></tr>
                 <tr class="table-primary"><td colspan="7" class="text-end"><strong>Grand Total</strong></td><td><strong>Rs.{{ invoice.total_amount }}</strong></td></tr>
                 <tr><td colspan="7" class="text-end">Paid</td><td>Rs.{{ invoice.paid_amount }}</td></tr>
                 <tr class="table-warning"><td colspan="7" class="text-end"><strong>Balance Due</strong></td><td><strong>Rs.{{ invoice.balance_due }}</strong></td></tr>
+                {% endif %}
             </tfoot>
         </table>
         {% if invoice.notes %}<p><strong>Notes:</strong> {{ invoice.notes }}</p>{% endif %}
