@@ -756,18 +756,73 @@ function stopVoice(){
   setVaState('idle');
 }
 
+// Track last invoice PK from URL so WhatsApp/Email work after navigation
+var _vaLastInvoicePk = null;
+(function(){
+  var m = window.location.pathname.match(/\/sales\/invoices\/(\d+)\//);
+  if(m) _vaLastInvoicePk = m[1];
+})();
+
+function getCurrentInvoicePk(){
+  var m = window.location.pathname.match(/\/sales\/invoices\/(\d+)\//);
+  return m ? m[1] : _vaLastInvoicePk;
+}
+
 function processVoiceQuery(text){
+  var lower = text.toLowerCase();
+
+  // ── WhatsApp command (handled locally) ──────────────
+  if((lower.includes('whatsapp') || lower.includes('whats app') || lower.includes('watsapp')) &&
+     (lower.includes('send') || lower.includes('open') || lower.includes('bhej') || lower.includes('share'))){
+    var wpk = getCurrentInvoicePk();
+    if(wpk){
+      showVaReply('Opening WhatsApp for this invoice. Please wait...');
+      speakResponse('Opening WhatsApp for this invoice.');
+      setTimeout(function(){
+        if(typeof sendWhatsApp === 'function') sendWhatsApp(wpk);
+      }, 1800);
+    } else {
+      showVaReply('Please open an invoice first, then say send on WhatsApp.');
+      speakResponse('Please open an invoice first, then say send on WhatsApp.');
+    }
+    return;
+  }
+
+  // ── Email command (handled locally) ─────────────────
+  if(lower.includes('email') && (lower.includes('send') || lower.includes('bhej') || lower.includes('open'))){
+    var epk = getCurrentInvoicePk();
+    if(epk){
+      showVaReply('Opening email for this invoice...');
+      speakResponse('Opening email for this invoice.');
+      setTimeout(function(){
+        if(typeof openEmailModal === 'function') openEmailModal(epk, '');
+      }, 1800);
+    } else {
+      showVaReply('Please open an invoice first, then say send email.');
+      speakResponse('Please open an invoice first, then say send email.');
+    }
+    return;
+  }
+
+  // ── Backend query ────────────────────────────────────
   fetch('/voice-assistant/?q=' + encodeURIComponent(text))
     .then(r => r.json())
     .then(data => {
-      var resp = document.getElementById('vaResponse');
-      resp.innerText = data.speak || '';
-      resp.style.display = 'block';
+      showVaReply(data.speak || '');
+      if(data.action && data.action.match(/\/sales\/invoices\/(\d+)\//)){
+        var m2 = data.action.match(/\/sales\/invoices\/(\d+)\//);
+        if(m2) _vaLastInvoicePk = m2[1];
+      }
       speakResponse(data.speak, data.action);
     })
     .catch(function(){
       setVaState('error','Server error. Try again.');
     });
+}
+
+function showVaReply(msg){
+  var resp = document.getElementById('vaResponse');
+  resp.innerText = msg; resp.style.display = 'block';
 }
 
 function speakResponse(text, action){

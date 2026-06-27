@@ -919,25 +919,36 @@ def voice_assistant(request):
         return JsonResponse({'speak': f'{greet}, {uname}! I am your CTC voice assistant. How can I help you today?', 'action': None})
 
     # ── invoice lookup by number ──────────────────────────
-    for kw in ['invoice', 'bill number', 'inv']:
+    # handles: "open invoice GST553", "invoice 553", "show bill GST-553"
+    import re as _re
+    _open_kws = ['open invoice', 'show invoice', 'open bill', 'show bill', 'find invoice',
+                 'invoice number', 'bill number', 'invoice no']
+    _inv_kws  = ['invoice', 'bill', 'inv']
+    _all_kws  = _open_kws + _inv_kws
+    for kw in _all_kws:
         if kw in query:
-            # extract alphanumeric token after keyword
-            import re
             raw = query.split(kw, 1)[-1].strip()
-            # convert spoken digits to numbers: "five five six" → "556"
-            word_nums = {'zero':'0','one':'1','two':'2','three':'3','four':'4','five':'5','six':'6','seven':'7','eight':'8','nine':'9'}
-            for w,d in word_nums.items():
-                raw = raw.replace(w, d)
-            token = re.sub(r'[^a-z0-9]', '', raw.lower())
-            if token:
-                # fuzzy search in invoice numbers
-                all_invs = list(SalesInvoice.objects.all().values_list('invoice_number', flat=True))
-                norm = [n.lower().replace('-','').replace('/','') for n in all_invs]
-                matches_i = [i for i,n in enumerate(norm) if token in n or n in token]
-                if not matches_i:
-                    matches_i = [i for i,n in enumerate(norm) if any(c in n for c in token)]
-                if matches_i:
-                    inv = SalesInvoice.objects.get(invoice_number=all_invs[matches_i[0]])
+            # strip leading filler words like "number", "no", "is"
+            raw = _re.sub(r'^(number|no|is|the)\s+', '', raw).strip()
+            # spoken digits → digits: "five five three" → "553"
+            word_nums = {'zero':'0','one':'1','two':'2','three':'3','four':'4',
+                         'five':'5','six':'6','seven':'7','eight':'8','nine':'9'}
+            for w, d in word_nums.items():
+                raw = re.sub(r'\b' + w + r'\b', d, raw)
+            token = _re.sub(r'[^a-z0-9]', '', raw.lower())
+            if len(token) < 2:
+                break
+            all_invs = list(SalesInvoice.objects.all().values_list('invoice_number', flat=True))
+            norm = [n.lower().replace('-','').replace('/','').replace(' ','') for n in all_invs]
+            # exact substring match first
+            matches_i = [i for i, n in enumerate(norm) if token in n or n in token]
+            # fallback: match digits portion only
+            if not matches_i:
+                digits = _re.sub(r'[^0-9]', '', token)
+                if digits:
+                    matches_i = [i for i, n in enumerate(norm) if digits in n]
+            if matches_i:
+                inv = SalesInvoice.objects.get(invoice_number=all_invs[matches_i[0]])
                     creator = inv.created_by.get_full_name() or inv.created_by.username if inv.created_by else 'unknown'
                     created_time = inv.created_at.strftime('%d %B %Y at %I:%M %p') if inv.created_at else 'unknown time'
                     if can_see_amounts:
