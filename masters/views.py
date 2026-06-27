@@ -803,269 +803,217 @@ def _indian_rupees(amount):
 # ─── VOICE ASSISTANT ────────────────────────────────────
 @login_required
 def voice_assistant(request):
-    import datetime
-    from django.db.models import Sum, Max, Q
-    from sales.models import SalesInvoice
-    from difflib import get_close_matches
-
     query = request.GET.get('q', '').strip().lower()
     if not query:
         return JsonResponse({'speak': 'Yes, I am listening. Please ask your question.', 'action': None})
-
     try:
-        return _voice_assistant_handle(request, query)
+        return _va(request, query)
     except Exception as exc:
-        import traceback
-        traceback.print_exc()
-        return JsonResponse({'speak': f'Sorry, something went wrong on the server. Error: {str(exc)[:80]}', 'action': None})
+        import traceback; traceback.print_exc()
+        return JsonResponse({'speak': f'Backend error: {str(exc)[:120]}', 'action': None})
 
 
-def _voice_assistant_handle(request, query):
-    import datetime
-    import re
-    _re = re
-    from django.db.models import Sum, Max, Q
+def _va_creator(inv):
+    """Safe helper — never crashes even if created_by is None."""
+    if not inv.created_by:
+        return 'unknown'
+    name = inv.created_by.get_full_name().strip()
+    return name if name else inv.created_by.username
+
+
+def _va_time(inv):
+    """Safe helper — never crashes if created_at is None."""
+    try:
+        return inv.created_at.strftime('%d %B %Y at %I:%M %p') if inv.created_at else ''
+    except Exception:
+        return ''
+
+
+def _va(request, query):
+    import datetime, re
+    from django.db.models import Sum
     from sales.models import SalesInvoice
     from difflib import get_close_matches
 
     today = datetime.date.today()
+    uname = (request.user.first_name or request.user.username).strip() or 'there'
     role = get_user_role(request.user)
-    can_see_amounts = request.user.is_superuser or role in ('admin', 'owner', 'accounts', 'manager')
-    DENIED = {'speak': 'Sorry, only admin and owner are authorized to view financial information.', 'action': None}
+    can_see = request.user.is_superuser or role in ('admin', 'owner', 'accounts', 'manager')
+    DENIED = {'speak': 'Sorry, only admin and accounts are authorized to view financial information.', 'action': None}
 
-    # ── today's highest sale ──────────────────────────────
-    if any(k in query for k in ['highest sale', 'maximum sale', 'biggest sale', 'top sale', 'sabse bada', 'highest invoice']):
-        if not can_see_amounts:
-            return JsonResponse(DENIED)
-        scope = 'today' if 'today' in query else ('month' if 'month' in query else 'today')
-        if scope == 'today':
-            inv = SalesInvoice.objects.filter(invoice_date=today).order_by('-total_amount').first()
-            label = 'today'
-        else:
-            inv = SalesInvoice.objects.filter(invoice_date__month=today.month, invoice_date__year=today.year).order_by('-total_amount').first()
-            label = 'this month'
+    def jr(speak, action=None):
+        return JsonResponse({'speak': speak, 'action': action})
+
+    # ── highest sale ─────────────────────────────────────
+    if any(k in query for k in ['highest sale', 'maximum sale', 'biggest sale', 'top sale', 'sabse bada']):
+        if not can_see: return JsonResponse(DENIED)
+        by_month = 'month' in query
+        qs = SalesInvoice.objects.filter(
+            invoice_date__month=today.month, invoice_date__year=today.year
+        ) if by_month else SalesInvoice.objects.filter(invoice_date=today)
+        inv = qs.order_by('-total_amount').first()
+        label = 'this month' if by_month else 'today'
         if inv:
-            return JsonResponse({
-                'speak': f"Highest sale {label} is invoice {inv.invoice_number} of {inv.customer.name} for {_indian_rupees(inv.total_amount)}.",
-                'action': f'/sales/invoices/{inv.pk}/',
-            })
-        return JsonResponse({'speak': f'No sales found for {label}.', 'action': None})
+            return jr(f"Highest sale {label}: invoice {inv.invoice_number} for {inv.customer.name}, {_indian_rupees(inv.total_amount)}.", f'/sales/invoices/{inv.pk}/')
+        return jr(f'No sales found for {label}.')
 
-    # ── total sales today / this month ───────────────────
-    if any(k in query for k in ['total sale', 'kitni sale', 'sales today', 'aaj ki sale', 'total invoice', 'total amount']):
-        if not can_see_amounts:
-            return JsonResponse(DENIED)
+    # ── total sales ───────────────────────────────────────
+    if any(k in query for k in ['total sale', 'kitni sale', 'sales today', 'aaj ki sale', 'total amount']):
+        if not can_see: return JsonResponse(DENIED)
         if 'month' in query:
-            total = SalesInvoice.objects.filter(invoice_date__month=today.month, invoice_date__year=today.year).aggregate(t=Sum('total_amount'))['t'] or 0
-            count = SalesInvoice.objects.filter(invoice_date__month=today.month, invoice_date__year=today.year).count()
-            return JsonResponse({'speak': f'This month total sales are {_indian_rupees(total)} across {count} invoices.', 'action': '/sales/invoices/'})
-        else:
-            total = SalesInvoice.objects.filter(invoice_date=today).aggregate(t=Sum('total_amount'))['t'] or 0
-            count = SalesInvoice.objects.filter(invoice_date=today).count()
-            return JsonResponse({'speak': f"Today's total sales are {_indian_rupees(total)} across {count} invoices.", 'action': '/sales/invoices/?from_date=' + str(today) + '&to_date=' + str(today)})
+            qs = SalesInvoice.objects.filter(invoice_date__month=today.month, invoice_date__year=today.year)
+            total = qs.aggregate(t=Sum('total_amount'))['t'] or 0
+            return jr(f"This month: {qs.count()} invoices, total {_indian_rupees(total)}.", '/sales/invoices/')
+        qs = SalesInvoice.objects.filter(invoice_date=today)
+        total = qs.aggregate(t=Sum('total_amount'))['t'] or 0
+        return jr(f"Today: {qs.count()} invoices, total {_indian_rupees(total)}.", f'/sales/invoices/?from_date={today}&to_date={today}')
+
+    # ── this month ────────────────────────────────────────
+    if any(k in query for k in ['this month', 'monthly sale', 'month total']):
+        if not can_see: return JsonResponse(DENIED)
+        qs = SalesInvoice.objects.filter(invoice_date__month=today.month, invoice_date__year=today.year)
+        total = qs.aggregate(t=Sum('total_amount'))['t'] or 0
+        return jr(f"This month: {qs.count()} invoices, total sales {_indian_rupees(total)}.", '/sales/invoices/')
 
     # ── pending invoices ──────────────────────────────────
-    if any(k in query for k in ['pending', 'unpaid', 'baaki', 'due']):
+    if any(k in query for k in ['pending', 'unpaid', 'baaki', 'due invoice']):
         count = SalesInvoice.objects.filter(status='pending').count()
-        if can_see_amounts:
+        if can_see:
             total = SalesInvoice.objects.filter(status='pending').aggregate(t=Sum('total_amount'))['t'] or 0
-            return JsonResponse({'speak': f'There are {count} pending invoices totaling {_indian_rupees(total)}.', 'action': '/sales/invoices/'})
-        return JsonResponse({'speak': f'There are {count} pending invoices.', 'action': '/sales/invoices/'})
+            return jr(f"{count} pending invoices totaling {_indian_rupees(total)}.", '/sales/invoices/')
+        return jr(f"{count} pending invoices.", '/sales/invoices/')
 
-    # ── how many invoices today ───────────────────────────
-    if any(k in query for k in ['how many invoice', 'kitne invoice', 'count invoice', 'invoice today', 'aaj ke invoice']):
+    # ── paid invoices ─────────────────────────────────────
+    if any(k in query for k in ['paid invoice', 'cleared invoice', 'jama']):
+        count = SalesInvoice.objects.filter(status='paid').count()
+        if can_see:
+            total = SalesInvoice.objects.filter(status='paid').aggregate(t=Sum('total_amount'))['t'] or 0
+            return jr(f"{count} paid invoices totaling {_indian_rupees(total)}.", '/sales/invoices/')
+        return jr(f"{count} paid invoices.", '/sales/invoices/')
+
+    # ── partial invoices ──────────────────────────────────
+    if any(k in query for k in ['partial invoice', 'partial payment', 'adha']):
+        count = SalesInvoice.objects.filter(status='partial').count()
+        return jr(f"{count} invoices with partial payment.", '/sales/invoices/')
+
+    # ── invoice count today ───────────────────────────────
+    if any(k in query for k in ['how many invoice', 'kitne invoice', 'count invoice', 'invoice today']):
         count = SalesInvoice.objects.filter(invoice_date=today).count()
-        return JsonResponse({'speak': f"Today {count} invoice{'s' if count != 1 else ''} ha{'ve' if count != 1 else 's'} been created.", 'action': '/sales/invoices/?from_date=' + str(today) + '&to_date=' + str(today)})
-
-    # ── show bill / invoice of [customer] ─────────────────
-    for kw in ['show bill of', 'show invoice of', 'bill of', 'invoice of', 'find bill', 'search bill', 'bill for', 'invoice for', 'ka bill', 'ki invoice']:
-        if kw in query:
-            cname = query.split(kw, 1)[-1].strip()
-            if cname:
-                from masters.models import Customer
-                all_names = list(Customer.objects.filter(is_active=True).values_list('name', flat=True))
-                matches = get_close_matches(cname.upper(), [n.upper() for n in all_names], n=1, cutoff=0.4)
-                if matches:
-                    matched_name = all_names[[n.upper() for n in all_names].index(matches[0])]
-                    cust = Customer.objects.filter(name=matched_name).first()
-                    inv = SalesInvoice.objects.filter(customer=cust).order_by('-invoice_date').first()
-                    if inv:
-                        if can_see_amounts:
-                            msg = f"Last invoice of {cust.name} is {inv.invoice_number} dated {inv.invoice_date} for {_indian_rupees(inv.total_amount)}."
-                        else:
-                            msg = f"Last invoice of {cust.name} is {inv.invoice_number} dated {inv.invoice_date}."
-                        return JsonResponse({'speak': msg, 'action': f'/sales/invoices/{inv.pk}/'})
-                    return JsonResponse({'speak': f'No invoice found for {cust.name}.', 'action': None})
-                return JsonResponse({'speak': f'No customer found matching {cname}. Please check the name.', 'action': None})
+        return jr(f"Today {count} invoices created.", f'/sales/invoices/?from_date={today}&to_date={today}')
 
     # ── customer balance ──────────────────────────────────
     if any(k in query for k in ['balance of', 'outstanding', 'kitna baaki', 'balance for']):
-        if not can_see_amounts:
-            return JsonResponse(DENIED)
-        for kw in ['balance of', 'balance for', 'outstanding of']:
+        if not can_see: return JsonResponse(DENIED)
+        from masters.models import Customer
+        for kw in ['balance of', 'balance for', 'outstanding of', 'outstanding for']:
             if kw in query:
                 cname = query.split(kw, 1)[-1].strip()
-                from masters.models import Customer
+                if not cname: continue
                 all_names = list(Customer.objects.filter(is_active=True).values_list('name', flat=True))
                 matches = get_close_matches(cname.upper(), [n.upper() for n in all_names], n=1, cutoff=0.4)
                 if matches:
-                    matched_name = all_names[[n.upper() for n in all_names].index(matches[0])]
-                    cust = Customer.objects.filter(name=matched_name).first()
+                    matched = all_names[[n.upper() for n in all_names].index(matches[0])]
+                    cust = Customer.objects.filter(name=matched).first()
                     total_due = SalesInvoice.objects.filter(customer=cust).exclude(status='paid').aggregate(t=Sum('total_amount'))['t'] or 0
-                    paid = SalesInvoice.objects.filter(customer=cust).aggregate(t=Sum('paid_amount'))['t'] or 0
-                    balance = total_due - paid
-                    return JsonResponse({'speak': f"{cust.name} has outstanding balance of {_indian_rupees(balance)}.", 'action': f'/masters/customers/'})
-                return JsonResponse({'speak': f'Customer {cname} not found.', 'action': None})
+                    paid_amt = SalesInvoice.objects.filter(customer=cust).aggregate(t=Sum('paid_amount'))['t'] or 0
+                    return jr(f"{cust.name} outstanding balance: {_indian_rupees(total_due - paid_amt)}.", '/masters/party/')
+                return jr(f'Customer {cname} not found.')
 
-    # ── what time / what day ──────────────────────────────
-    if any(k in query for k in ['what time', 'time now', 'current time', 'kitna baja', 'time kya']):
-        now = datetime.datetime.now()
-        t = now.strftime('%I:%M %p').lstrip('0')
-        return JsonResponse({'speak': f'The current time is {t}.', 'action': None})
+    # ── last / latest invoice ─────────────────────────────
+    if any(k in query for k in ['last invoice', 'latest invoice', 'recent invoice', 'pichla invoice']):
+        inv = SalesInvoice.objects.order_by('-pk').first()
+        if inv:
+            creator = _va_creator(inv)
+            if can_see:
+                return jr(f"Last invoice: {inv.invoice_number} for {inv.customer.name}, {_indian_rupees(inv.total_amount)}, by {creator}.", f'/sales/invoices/{inv.pk}/')
+            return jr(f"Last invoice: {inv.invoice_number} for {inv.customer.name}, by {creator}.", f'/sales/invoices/{inv.pk}/')
+        return jr('No invoices found in the system.')
 
-    if any(k in query for k in ['what day', 'which day', 'aaj kya', 'today date', 'what is today', 'todays date', "today's date"]):
-        day = today.strftime('%A, %d %B %Y')
-        return JsonResponse({'speak': f'Today is {day}.', 'action': None})
+    # ── who created ───────────────────────────────────────
+    if any(k in query for k in ['who created', 'kisne banaya', 'who made']):
+        inv = SalesInvoice.objects.order_by('-pk').first()
+        if inv:
+            creator = _va_creator(inv)
+            t = _va_time(inv)
+            return jr(f"Invoice {inv.invoice_number} was created by {creator}{' on ' + t if t else ''}.", f'/sales/invoices/{inv.pk}/')
+        return jr('No invoices found.')
 
-    # ── greetings ─────────────────────────────────────────
-    uname = request.user.first_name or request.user.username
-    if any(k in query for k in ['hello', 'hi ', 'hey', 'hii', 'namaste', 'namaskar']):
-        h = datetime.datetime.now().hour
-        greet = 'Good morning' if h < 12 else ('Good afternoon' if h < 17 else 'Good evening')
-        return JsonResponse({'speak': f'{greet}, {uname}! I am your CTC voice assistant. How can I help you today?', 'action': None})
-
-    # ── invoice lookup by number ──────────────────────────
-    # handles: "open invoice GST553", "invoice 553", "show bill GST-553"
-    import re as _re
-    _open_kws = ['open invoice', 'show invoice', 'open bill', 'show bill', 'find invoice',
-                 'invoice number', 'bill number', 'invoice no']
-    _inv_kws  = ['invoice', 'bill', 'inv']
-    _all_kws  = _open_kws + _inv_kws
-    for kw in _all_kws:
+    # ── show bill of [customer] ───────────────────────────
+    for kw in ['show bill of', 'show invoice of', 'bill of', 'invoice of', 'bill for', 'invoice for', 'ka bill', 'ki invoice']:
         if kw in query:
-            raw = query.split(kw, 1)[-1].strip()
-            # strip leading filler words like "number", "no", "is"
-            raw = _re.sub(r'^(number|no|is|the)\s+', '', raw).strip()
-            # spoken digits → digits: "five five three" → "553"
-            word_nums = {'zero':'0','one':'1','two':'2','three':'3','four':'4',
-                         'five':'5','six':'6','seven':'7','eight':'8','nine':'9'}
-            for w, d in word_nums.items():
-                raw = re.sub(r'\b' + w + r'\b', d, raw)
-            token = _re.sub(r'[^a-z0-9]', '', raw.lower())
-            if len(token) < 2:
-                break
-            all_invs = list(SalesInvoice.objects.all().values_list('invoice_number', flat=True))
-            norm = [n.lower().replace('-','').replace('/','').replace(' ','') for n in all_invs]
-            # exact substring match first
-            matches_i = [i for i, n in enumerate(norm) if token in n or n in token]
-            # fallback: match digits portion only
-            if not matches_i:
-                digits = _re.sub(r'[^0-9]', '', token)
-                if digits:
-                    matches_i = [i for i, n in enumerate(norm) if digits in n]
-            if matches_i:
-                inv = SalesInvoice.objects.get(invoice_number=all_invs[matches_i[0]])
-                creator = inv.created_by.get_full_name() or inv.created_by.username if inv.created_by else 'unknown'
-                created_time = inv.created_at.strftime('%d %B %Y at %I:%M %p') if inv.created_at else 'unknown time'
-                if can_see_amounts:
-                    msg = (f"Invoice {inv.invoice_number} is for customer {inv.customer.name}, "
-                           f"amount {_indian_rupees(inv.total_amount)}, status {inv.status}, "
-                           f"created by {creator} on {created_time}.")
-                else:
-                    msg = (f"Invoice {inv.invoice_number} is for customer {inv.customer.name}, "
-                           f"status {inv.status}, created by {creator} on {created_time}.")
-                return JsonResponse({'speak': msg, 'action': f'/sales/invoices/{inv.pk}/'})
-            break
-
-    # ── sales this month / this week ─────────────────────
-    if any(k in query for k in ['this month', 'monthly sale', 'month total', 'is month']):
-        if not can_see_amounts:
-            return JsonResponse(DENIED)
-        import calendar
-        first_day = today.replace(day=1)
-        qs = SalesInvoice.objects.filter(invoice_date__gte=first_day, invoice_date__lte=today)
-        count = qs.count()
-        total = qs.aggregate(t=Sum('total_amount'))['t'] or 0
-        return JsonResponse({'speak': f"This month {count} invoices, total sales {_indian_rupees(total)}.", 'action': '/sales/invoices/'})
-
-    # ── paid invoices ─────────────────────────────────────
-    if any(k in query for k in ['paid invoice', 'cleared invoice', 'jama invoice']):
-        count = SalesInvoice.objects.filter(status='paid').count()
-        if can_see_amounts:
-            total = SalesInvoice.objects.filter(status='paid').aggregate(t=Sum('total_amount'))['t'] or 0
-            return JsonResponse({'speak': f"There are {count} paid invoices totaling {_indian_rupees(total)}.", 'action': '/sales/invoices/'})
-        return JsonResponse({'speak': f"There are {count} paid invoices.", 'action': '/sales/invoices/'})
-
-    # ── partial invoices ──────────────────────────────────
-    if any(k in query for k in ['partial invoice', 'partial payment', 'adha payment']):
-        count = SalesInvoice.objects.filter(status='partial').count()
-        return JsonResponse({'speak': f"There are {count} invoices with partial payment.", 'action': '/sales/invoices/'})
+            cname = query.split(kw, 1)[-1].strip()
+            if not cname: continue
+            from masters.models import Customer
+            all_names = list(Customer.objects.filter(is_active=True).values_list('name', flat=True))
+            matches = get_close_matches(cname.upper(), [n.upper() for n in all_names], n=1, cutoff=0.4)
+            if matches:
+                matched = all_names[[n.upper() for n in all_names].index(matches[0])]
+                cust = Customer.objects.filter(name=matched).first()
+                inv = SalesInvoice.objects.filter(customer=cust).order_by('-invoice_date').first()
+                if inv:
+                    if can_see:
+                        return jr(f"Last invoice of {cust.name}: {inv.invoice_number}, dated {inv.invoice_date}, {_indian_rupees(inv.total_amount)}.", f'/sales/invoices/{inv.pk}/')
+                    return jr(f"Last invoice of {cust.name}: {inv.invoice_number}, dated {inv.invoice_date}.", f'/sales/invoices/{inv.pk}/')
+                return jr(f'No invoices found for {cust.name}.')
+            return jr(f'No customer matching "{cname}" found. Try saying the full name.')
 
     # ── total customers ───────────────────────────────────
     if any(k in query for k in ['total customer', 'how many customer', 'kitne customer', 'customer count']):
         from masters.models import Customer
-        count = Customer.objects.filter(is_active=True).count()
-        return JsonResponse({'speak': f"There are {count} active customers in the system.", 'action': '/masters/party/'})
+        return jr(f"There are {Customer.objects.filter(is_active=True).count()} active customers.", '/masters/party/')
 
     # ── total products ────────────────────────────────────
     if any(k in query for k in ['total product', 'how many product', 'kitne product', 'product count', 'item count']):
         from masters.models import Product
-        count = Product.objects.filter(is_active=True).count()
-        return JsonResponse({'speak': f"There are {count} active products in the system.", 'action': '/masters/products/'})
+        return jr(f"There are {Product.objects.filter(is_active=True).count()} active products.", '/masters/products/')
 
-    # ── last invoice ──────────────────────────────────────
-    if any(k in query for k in ['last invoice', 'latest invoice', 'recent invoice', 'pichla invoice']):
-        inv = SalesInvoice.objects.order_by('-pk').first()
-        if inv:
-            creator = inv.created_by.get_full_name() or inv.created_by.username if inv.created_by else 'unknown'
-            if can_see_amounts:
-                msg = f"Last invoice is {inv.invoice_number} for {inv.customer.name}, amount {_indian_rupees(inv.total_amount)}, created by {creator}."
-            else:
-                msg = f"Last invoice is {inv.invoice_number} for {inv.customer.name}, created by {creator}."
-            return JsonResponse({'speak': msg, 'action': f'/sales/invoices/{inv.pk}/'})
+    # ── invoice lookup by number ──────────────────────────
+    for kw in ['open invoice', 'show invoice', 'open bill', 'find invoice', 'invoice number', 'invoice no', 'invoice', 'bill']:
+        if kw in query:
+            raw = query.split(kw, 1)[-1].strip()
+            raw = re.sub(r'^(number|no|is|the)\s+', '', raw).strip()
+            for w, d in {'zero':'0','one':'1','two':'2','three':'3','four':'4','five':'5','six':'6','seven':'7','eight':'8','nine':'9'}.items():
+                raw = re.sub(r'\b' + w + r'\b', d, raw)
+            token = re.sub(r'[^a-z0-9]', '', raw.lower())
+            if len(token) < 2: break
+            all_invs = list(SalesInvoice.objects.values_list('invoice_number', flat=True))
+            norm = [n.lower().replace('-','').replace('/','').replace(' ','') for n in all_invs]
+            hits = [i for i, n in enumerate(norm) if token in n or n in token]
+            if not hits:
+                digits = re.sub(r'[^0-9]', '', token)
+                if digits: hits = [i for i, n in enumerate(norm) if digits in n]
+            if hits:
+                inv = SalesInvoice.objects.get(invoice_number=all_invs[hits[0]])
+                creator = _va_creator(inv)
+                t = _va_time(inv)
+                if can_see:
+                    return jr(f"Invoice {inv.invoice_number}: {inv.customer.name}, {_indian_rupees(inv.total_amount)}, {inv.status}, by {creator}{' on ' + t if t else ''}.", f'/sales/invoices/{inv.pk}/')
+                return jr(f"Invoice {inv.invoice_number}: {inv.customer.name}, {inv.status}, by {creator}.", f'/sales/invoices/{inv.pk}/')
+            break
 
-    # ── who created this invoice (must have PK in query from frontend action field) ──
-    if any(k in query for k in ['who created', 'kisne banaya', 'created by', 'who made']):
-        inv = SalesInvoice.objects.order_by('-pk').first()
-        if inv and inv.created_by:
-            creator = inv.created_by.get_full_name() or inv.created_by.username
-            t = inv.created_at.strftime('%d %B at %I:%M %p') if inv.created_at else ''
-            return JsonResponse({'speak': f"Invoice {inv.invoice_number} was created by {creator} on {t}.", 'action': f'/sales/invoices/{inv.pk}/'})
-        return JsonResponse({'speak': "I could not find that information.", 'action': None})
+    # ── navigation ────────────────────────────────────────
+    for kws, url, msg in [
+        (['dashboard','home','ghar'], '/dashboard/', 'Opening dashboard.'),
+        (['invoice list','all invoice','sales list'], '/sales/invoices/', 'Opening invoice list.'),
+        (['new gst','create gst','naya gst'], '/sales/invoices/add/?type=gst', 'Opening new GST invoice.'),
+        (['new proforma','create proforma'], '/sales/invoices/add/?type=proforma', 'Opening new proforma.'),
+        (['new export','export invoice'], '/sales/export/invoice/', 'Opening new export invoice.'),
+        (['new invoice','naya bill','naya invoice'], '/sales/invoices/add/?type=gst', 'Opening new invoice.'),
+        (['customer list','party list','party master'], '/masters/party/', 'Opening customer list.'),
+        (['product list','product master','item list'], '/masters/products/', 'Opening product list.'),
+        (['purchase','kharid'], '/purchase/bills/', 'Opening purchase.'),
+        (['receive payment','payment receive'], '/payments/receive/', 'Opening receive payment.'),
+        (['payment receipt','receipt list'], '/payments/receipt/', 'Opening receipts.'),
+        (['user management','staff list','manage user'], '/users/', 'Opening user management.'),
+        (['report','sales report'], '/reports/', 'Opening reports.'),
+        (['credit note'], '/credit-note/', 'Opening credit notes.'),
+        (['service','call receive'], '/service/', 'Opening service.'),
+        (['logout','sign out','log out','bahar'], '/logout/', 'Logging you out. Goodbye!'),
+    ]:
+        if any(k in query for k in kws):
+            return jr(msg, url)
 
-    # ── what can you do / help ────────────────────────────
-    if any(k in query for k in ['help', 'what can you do', 'commands', 'kya kar sakte', 'list command']):
-        msg = ("I can: open new GST or proforma invoice, open invoice list, show dashboard, "
-               "tell today's total sales, highest sale, pending invoices, paid invoices, this month sales, "
-               "find invoice by number, show last invoice, customer balance, customer count, product count, "
-               "print invoice, edit invoice, send on WhatsApp or email, tell time and date. Just ask!")
-        return JsonResponse({'speak': msg, 'action': None})
-
-    # ── go to page ────────────────────────────────────────
-    nav_map = [
-        (['dashboard', 'home', 'ghar', 'main page'], '/dashboard/', 'Opening dashboard.'),
-        (['invoice list', 'all invoice', 'sales list', 'invoice dekho', 'show all bill', 'list invoice'], '/sales/invoices/', 'Opening invoice list.'),
-        (['new gst', 'create gst', 'gst invoice bana', 'add gst', 'naya gst'], '/sales/invoices/add/?type=gst', 'Opening new GST invoice form.'),
-        (['new proforma', 'create proforma', 'proforma bana', 'add proforma'], '/sales/invoices/add/?type=proforma', 'Opening new proforma invoice.'),
-        (['new export', 'create export', 'export invoice bana'], '/sales/export/invoice/', 'Opening new export invoice.'),
-        (['new invoice', 'add invoice', 'create invoice', 'naya bill', 'naya invoice'], '/sales/invoices/add/?type=gst', 'Opening new GST invoice.'),
-        (['customer list', 'customer master', 'khata list', 'party list', 'party master'], '/masters/party/', 'Opening customer list.'),
-        (['product list', 'product master', 'item list', 'item master'], '/masters/products/', 'Opening product list.'),
-        (['purchase list', 'purchase bill', 'kharid'], '/purchase/bills/', 'Opening purchase bills.'),
-        (['receive payment', 'payment receive', 'add payment'], '/payments/receive/', 'Opening receive payment.'),
-        (['payment receipt', 'receipt list'], '/payments/receipt/', 'Opening payment receipts.'),
-        (['user management', 'staff list', 'manage user', 'user list'], '/users/', 'Opening user management.'),
-        (['report', 'sales report', 'report dekho'], '/reports/', 'Opening reports.'),
-        (['category', 'categories'], '/masters/categories/', 'Opening categories.'),
-        (['credit note', 'credit list'], '/credit-note/', 'Opening credit notes.'),
-        (['service', 'call receive', 'complaint'], '/service/', 'Opening service module.'),
-        (['logout', 'sign out', 'log out', 'bahar jao'], '/logout/', 'Logging you out. Goodbye!'),
-    ]
-    for keywords, url, msg in nav_map:
-        if any(k in query for k in keywords):
-            return JsonResponse({'speak': msg, 'action': url})
-
-    return JsonResponse({'speak': f"Sorry {uname}, I did not understand that. Say help to hear all available commands.", 'action': None})
+    return jr(f"Sorry {uname}, I did not understand. Say 'help' to hear all commands.")
 
 
 def generate_alpha_code(model_class, name):

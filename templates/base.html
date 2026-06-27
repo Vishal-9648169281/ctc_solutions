@@ -987,8 +987,14 @@ function processVoiceQuery(text){
   // ── Backend query (data/stats/lookup) ─────────────────
   setVaState('processing','Let me check that...');
   fetch('/voice-assistant/?q=' + encodeURIComponent(text))
-    .then(function(r){ return r.json(); })
-    .then(function(data){
+    .then(function(r){
+      if(!r.ok) throw new Error('HTTP ' + r.status);
+      return r.text();
+    })
+    .then(function(txt){
+      var data;
+      try { data = JSON.parse(txt); }
+      catch(e){ throw new Error('Server returned invalid response. Check Render logs.'); }
       showVaReply(data.speak || '');
       if(data.action){
         var m2 = data.action.match(/\/sales\/invoices\/(\d+)\//);
@@ -996,8 +1002,10 @@ function processVoiceQuery(text){
       }
       speakResponse(data.speak, data.action);
     })
-    .catch(function(){
-      setVaState('error','Server error. Please try again.');
+    .catch(function(err){
+      var msg = err && err.message ? err.message : 'Server unreachable. Please try again.';
+      setVaState('error', msg);
+      showVaReply(msg);
     });
 }
 
